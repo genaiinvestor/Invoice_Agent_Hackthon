@@ -1,0 +1,60 @@
+2025-10-30 21:25:46 | [32mINFO[0m | agent.validation     | _load_purchase_orders | Loaded 25 purchase orders
+2025-10-30 21:25:46 | [32mINFO[0m | invoice_graph        | _initialize_agents | Initialized 6 agents
+2025-10-30 21:25:59 | [32mINFO[0m | invoice_graph        | process_batch   | Starting batch processing of 3 invoices
+2025-10-30 21:25:59 | [32mINFO[0m | invoice_graph        | log_workflow_start | [WORKFLOW] Starting standard workflow for process proc_20251030_212559
+2025-10-30 21:25:59 | [32mINFO[0m | invoice_graph        | log_workflow_start | [WORKFLOW] Starting standard workflow for process proc_20251030_212559
+2025-10-30 21:25:59 | [32mINFO[0m | invoice_graph        | log_workflow_start | [WORKFLOW] Starting standard workflow for process proc_20251030_212559
+2025-10-30 21:25:59 | [32mINFO[0m | agent.document       | run             | Starting document agent for process proc_20251030_212559
+2025-10-30 21:25:59 | [32mINFO[0m | agent.document       | _extract_text_from_pdf | Best extraction method: pymupdf (399 characters)
+2025-10-30 21:26:02 | [32mINFO[0m | document_agent       | log_decision    | [DECISION] Agent document decided: extraction_successful - Extracted invoice 14021 with 0.94 confidence (confidence: 0.94)
+2025-10-30 21:26:02 | [32mINFO[0m | agent.document       | run             | Completed document agent for process proc_20251030_212559 in 2975ms
+2025-10-30 21:26:02 | [32mINFO[0m | agent.document       | run             | Starting document agent for process proc_20251030_212559
+2025-10-30 21:26:02 | [32mINFO[0m | agent.document       | _extract_text_from_pdf | Best extraction method: pymupdf (411 characters)
+2025-10-30 21:26:05 | [32mINFO[0m | document_agent       | log_decision    | [DECISION] Agent document decided: extraction_successful - Extracted invoice 6459 with 0.94 confidence (confidence: 0.94)
+2025-10-30 21:26:05 | [32mINFO[0m | agent.document       | run             | Completed document agent for process proc_20251030_212559 in 2628ms
+2025-10-30 21:26:05 | [32mINFO[0m | agent.document       | run             | Starting document agent for process proc_20251030_212559
+2025-10-30 21:26:05 | [32mINFO[0m | agent.document       | _extract_text_from_pdf | Best extraction method: pymupdf (428 characters)
+2025-10-30 21:26:07 | [32mINFO[0m | document_agent       | log_decision    | [DECISION] Agent document decided: extraction_successful - Extracted invoice 24450 with 0.93 confidence (confidence: 0.93)
+2025-10-30 21:26:07 | [32mINFO[0m | agent.document       | run             | Completed document agent for process proc_20251030_212559 in 2361ms
+2025-10-30 21:26:07 | [32mINFO[0m | agent.validation     | run             | Starting validation agent for process proc_20251030_212559
+2025-10-30 21:26:07 | [32mINFO[0m | agent.validation     | _find_matching_pos | Found 1 matching POs for invoice 14021
+2025-10-30 21:26:07 | [32mINFO[0m | validation_agent     | log_decision    | [DECISION] Agent validation decided: valid - Perfect match (confidence: 1.00)
+2025-10-30 21:26:07 | [32mINFO[0m | agent.validation     | run             | Completed validation agent for process proc_20251030_212559 in 16ms
+2025-10-30 21:26:07 | [32mINFO[0m | agent.validation     | run             | Starting validation agent for process proc_20251030_212559
+2025-10-30 21:26:07 | [32mINFO[0m | agent.validation     | _find_matching_pos | Found 1 matching POs for invoice 6459
+2025-10-30 21:26:07 | [32mINFO[0m | validation_agent     | log_decision    | [DECISION] Agent validation decided: requires_approval - Quantity mismatch: Invoice=5, PO=4 (25.0% diff); Overbilling: Invoice=$9515.00, Expected=$7612.00 (25.0% over); Total overbilling: $9758.79 vs $7612.00 (28.2% over) (confidence: 0.60)
+2025-10-30 21:26:07 | [32mINFO[0m | agent.validation     | run             | Completed validation agent for process proc_20251030_212559 in 7ms
+2025-10-30 21:26:07 | [32mINFO[0m | agent.validation     | run             | Starting validation agent for process proc_20251030_212559
+2025-10-30 21:26:07 | [32mINFO[0m | agent.validation     | _find_matching_pos | Found 1 matching POs for invoice 24450
+2025-10-30 21:26:07 | [32mINFO[0m | validation_agent     | log_decision    | [DECISION] Agent validation decided: requires_approval - Total overbilling: $435.99 vs $409.24 (6.5% over) (confidence: 0.90)
+2025-10-30 21:26:07 | [32mINFO[0m | agent.validation     | run             | Completed validation agent for process proc_20251030_212559 in 0ms
+2025-10-30 21:26:07 | [32mINFO[0m | agent.risk           | run             | Starting risk agent for process proc_20251030_212559
+2025-10-30 21:26:09 | [33mWARNING[0m | agent.risk           | _ai_risk_assessment | AI risk assessment failed: Expecting ',' delimiter: line 7 column 250 (char 350)
+2025-10-30 21:26:09 | [32mINFO[0m | risk_agent           | log_decision    | [DECISION] Agent risk decided: low_approve - Low risk assessment (confidence: 0.14)
+2025-10-30 21:26:09 | [32mINFO[0m | agent.risk           | run             | Completed risk agent for process proc_20251030_212559 in 1820ms
+2025-10-30 21:26:09 | [32mINFO[0m | agent.escalation     | run             | Starting escalation agent for process proc_20251030_212559
+2025-10-30 21:26:13 | [32mINFO[0m | agent.escalation     | _send_escalation_notifications | Escalation notification sent to supervisor: skipped
+2025-10-30 21:26:13 | [32mINFO[0m | agent.escalation     | _setup_sla_monitoring | SLA monitoring set up for escalation ESC_proc_20251030_212559_20251030_212613: 2 hours deadline at 2025-10-30 23:26:13.069806
+2025-10-30 21:26:13 | [33mWARNING[0m | escalation_agent     | log_escalation  | [ESCALATION] Agent escalation escalating process proc_20251030_212559: general_escalation escalation to supervisor: Validation issues: Quantity mismatch: Invoice=5, PO=4 (25.0% diff); Overbilling: Invoice=$9515.00, Expected=$7612.00 (25.0% over); Total overbilling: $9758.79 vs $7612.00 (28.2% over)
+2025-10-30 21:26:13 | [32mINFO[0m | agent.escalation     | run             | Completed escalation agent for process proc_20251030_212559 in 3487ms
+2025-10-30 21:26:13 | [32mINFO[0m | agent.escalation     | run             | Starting escalation agent for process proc_20251030_212559
+2025-10-30 21:26:16 | [32mINFO[0m | agent.escalation     | _send_escalation_notifications | Escalation notification sent to supervisor: skipped
+2025-10-30 21:26:16 | [32mINFO[0m | agent.escalation     | _setup_sla_monitoring | SLA monitoring set up for escalation ESC_proc_20251030_212559_20251030_212616: 2 hours deadline at 2025-10-30 23:26:16.142269
+2025-10-30 21:26:16 | [33mWARNING[0m | escalation_agent     | log_escalation  | [ESCALATION] Agent escalation escalating process proc_20251030_212559: general_escalation escalation to supervisor: Validation issues: Total overbilling: $435.99 vs $409.24 (6.5% over)
+2025-10-30 21:26:16 | [32mINFO[0m | agent.escalation     | run             | Completed escalation agent for process proc_20251030_212559 in 3097ms
+2025-10-30 21:26:16 | [32mINFO[0m | invoice_graph        | log_workflow_complete | [WORKFLOW_COMPLETE] Completed standard workflow for process proc_20251030_212559 in 13435ms
+2025-10-30 21:26:16 | [32mINFO[0m | invoice_graph        | log_workflow_complete | [WORKFLOW_COMPLETE] Completed standard workflow for process proc_20251030_212559 in 16531ms
+2025-10-30 21:26:16 | [32mINFO[0m | agent.payment        | run             | Starting payment agent for process proc_20251030_212559
+2025-10-30 21:26:16 | [32mINFO[0m | agent.payment        | _execute_payment | Payment attempt 1 for invoice 14021
+2025-10-30 21:26:20 | [31mERROR[0m | agent.payment        | _execute_payment | Payment execution error: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /initiate_payment (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001F971846E90>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')) on attempt 1
+2025-10-30 21:26:25 | [32mINFO[0m | agent.payment        | _execute_payment | Payment attempt 2 for invoice 14021
+2025-10-30 21:26:29 | [31mERROR[0m | agent.payment        | _execute_payment | Payment execution error: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /initiate_payment (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001F972E706D0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')) on attempt 2
+2025-10-30 21:26:34 | [32mINFO[0m | agent.payment        | _execute_payment | Payment attempt 3 for invoice 14021
+2025-10-30 21:26:38 | [31mERROR[0m | agent.payment        | _execute_payment | Payment execution error: HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /initiate_payment (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001F972E72410>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')) on attempt 3
+2025-10-30 21:26:39 | [32mINFO[0m | payment_agent        | log_decision    | [DECISION] Agent payment decided: failed - Payment for invoice 14021 failed due to an unspecified error, requiring investigation to ensure compliance before retrying the transaction. (confidence: 0.86)
+2025-10-30 21:26:39 | [32mINFO[0m | agent.payment        | run             | Completed payment agent for process proc_20251030_212559 in 23277ms
+2025-10-30 21:26:39 | [32mINFO[0m | agent.escalation     | run             | Starting escalation agent for process proc_20251030_212559
+2025-10-30 21:26:39 | [31mERROR[0m | agent.escalation     | run             | Failed escalation agent for process proc_20251030_212559: Preconditions not met for escalation
+2025-10-30 21:26:39 | [32mINFO[0m | agent.escalation     | run             | Scheduling retry 1 for escalation
+2025-10-30 21:26:39 | [32mINFO[0m | invoice_graph        | log_workflow_complete | [WORKFLOW_COMPLETE] Completed standard workflow for process proc_20251030_212559 in 39885ms
+2025-10-30 21:26:39 | [32mINFO[0m | invoice_graph        | process_batch   | Batch processing completed: 3 successful, 0 failed

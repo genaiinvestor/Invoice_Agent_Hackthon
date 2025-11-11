@@ -1,0 +1,38 @@
+agents/__pycache__
+
+
+__pycache__/
+
+
+Project\.env
+
+output/
+
+Project/.env
+
+Project/__pycache__/
+
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+*.env
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
