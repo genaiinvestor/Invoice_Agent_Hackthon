@@ -96,7 +96,8 @@ from typing import List
 from graph import get_workflow
 from state import ProcessingStatus, PaymentStatus
 from utils.logger import setup_logging, get_logger
-from datetime import datetime, UTC
+from datetime import datetime, timezone
+UTC = timezone.utc
 
 
 class InvoiceProcessingApp:
