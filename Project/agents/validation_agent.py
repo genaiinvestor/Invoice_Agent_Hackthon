@@ -83,7 +83,8 @@ class ValidationAgent(BaseAgent):
         self.config = config or {}
         self.logger = StructuredLogger("ValidationAgent")
  
-        self.po_file_path = self.config.get("po_file_path", "data/purchase_orders.csv")
+        # self.po_file_path = self.config.get("po_file_path", "data/purchase_orders.csv")
+        self.po_file_path = self.config.get("po_file_path", "Project/data/purchase_orders.csv")
         self.fuzzy_threshold = int(self.config.get("fuzzy_threshold", 80))
         self.amount_tolerance = float(self.config.get("amount_tolerance", 0.05))
         self.enable_three_way_match = bool(self.config.get("enable_three_way_match", True))
