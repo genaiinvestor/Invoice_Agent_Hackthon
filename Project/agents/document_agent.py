@@ -166,15 +166,52 @@ class DocumentAgent(BaseAgent):
         self.ai_confidence_threshold = float(self.config.get("ai_confidence_threshold", 0.7))
         self.retry_on_failure = bool(self.config.get("retry_on_failure", True))
  
+    def _resolve_file_path(self, file_name: str) -> str:
+        """
+        Resolve the correct absolute path for an invoice file.
+        Works both locally and in Cloud Run.
+        """
+        if not file_name:
+            return ""
+
+        # If already absolute (e.g. /tmp/... or /app/Project/data/invoices/...), return as-is
+        if os.path.isabs(file_name) and os.path.exists(file_name):
+            return file_name
+
+        # Otherwise, build path relative to current file location
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        possible_paths = [
+            os.path.join(base_dir, file_name),
+            os.path.join(base_dir, "data", "invoices", os.path.basename(file_name)),
+            os.path.join("/app/Project/data/invoices", os.path.basename(file_name)),
+        ]
+        for path in possible_paths:
+            if os.path.exists(path):
+                return path
+
+        self.logger.warning(f"⚠️ Could not resolve valid file path for: {file_name}")
+        return file_name  # fallback, may still fail later
+
     # ------------------------------------------------------------------
     # Preconditions / Postconditions
     # ------------------------------------------------------------------
+    # def _validate_preconditions(self, state: InvoiceProcessingState) -> bool:
+    #     """Check if the PDF file exists before extraction."""
+    #     if not state.file_name or not os.path.exists(state.file_name):
+    #         self.logger.error("Missing or invalid invoice PDF file path.")
+    #         return False
+    #     return True
+
     def _validate_preconditions(self, state: InvoiceProcessingState) -> bool:
         """Check if the PDF file exists before extraction."""
-        if not state.file_name or not os.path.exists(state.file_name):
-            self.logger.error("Missing or invalid invoice PDF file path.")
+        resolved_path = self._resolve_file_path(state.file_name)
+        state.file_name = resolved_path  # update in place
+
+        if not resolved_path or not os.path.exists(resolved_path):
+            self.logger.error(f"Missing or invalid invoice PDF file path: {resolved_path}")
             return False
         return True
+
  
     def _validate_postconditions(self, state: InvoiceProcessingState) -> bool:
         """Ensure extracted invoice data is valid."""
@@ -188,7 +225,9 @@ class DocumentAgent(BaseAgent):
         start = self._start_timer()
         state.current_agent = self.agent_name
         state.overall_status = ProcessingStatus.IN_PROGRESS
-        file_name = state.file_name
+        # file_name = state.file_name
+        file_name = self._resolve_file_path(sstate.file_name)
+        state.file_name = file_name
         self.logger.info(f"Extracting invoice from file: {file_name}")
  
         try:
