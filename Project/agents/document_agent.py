@@ -226,7 +226,7 @@ class DocumentAgent(BaseAgent):
         state.current_agent = self.agent_name
         state.overall_status = ProcessingStatus.IN_PROGRESS
         # file_name = state.file_name
-        file_name = self._resolve_file_path(sstate.file_name)
+        file_name = self._resolve_file_path(state.file_name)
         state.file_name = file_name
         self.logger.info(f"Extracting invoice from file: {file_name}")
  

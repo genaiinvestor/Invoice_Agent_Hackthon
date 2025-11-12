@@ -110,6 +110,10 @@ class StructuredLogger:
     
     def error(self,msg,*args,**kwargs):
         self.logger.error(msg,*args,**kwargs)
+
+    def exception(self, msg, *args, **kwargs):
+        self.error(msg, *args, exc_info=True, **kwargs)
+
     
     def log_agent_start(self, agent_name: str, process_id: str, **kwargs):
         """Log agent execution start"""
