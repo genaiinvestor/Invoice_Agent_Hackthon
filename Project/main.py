@@ -206,13 +206,35 @@ class InvoiceProcessingApp:
         return selected_files, workflow_type, max_concurrent, run_btn
 
     def get_available_files(self) -> List[str]:
-        data_dir = os.path.join("data", "invoices")
-        os.makedirs(data_dir, exist_ok=True)
-        return sorted([
-    os.path.join(data_dir, f)
-    for f in os.listdir(data_dir)
-    if f.lower().endswith(".pdf")
-])
+            # ✅ Use absolute path (works on local and Cloud Run)
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            data_dir = os.path.join(base_dir, "data", "invoices")
+
+            # Ensure folder exists
+            os.makedirs(data_dir, exist_ok=True)
+
+            # ✅ Handle missing or empty directory gracefully
+            if not os.path.exists(data_dir):
+                st.warning("⚠️ No 'data/invoices' folder found inside the app.")
+                return []
+
+            pdf_files = [
+                os.path.join("data/invoices", f)
+                for f in os.listdir(data_dir)
+                if f.lower().endswith(".pdf")
+            ]
+
+            if not pdf_files:
+                st.info("📂 No invoice files found in the 'data/invoices' folder.")
+            return sorted(pdf_files)
+#     def get_available_files(self) -> List[str]:
+#         data_dir = os.path.join("data", "invoices")
+#         os.makedirs(data_dir, exist_ok=True)
+#         return sorted([
+#     os.path.join(data_dir, f)
+#     for f in os.listdir(data_dir)
+#     if f.lower().endswith(".pdf")
+# ])
 
     
 
