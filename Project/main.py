@@ -99,6 +99,7 @@ from utils.logger import setup_logging, get_logger
 from datetime import datetime, timezone
 UTC = timezone.utc
 from google.cloud import firestore
+from fastapi import FastAPI
 
 
 # --- FastAPI + Firestore setup ---
