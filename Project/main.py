@@ -98,6 +98,7 @@ from state import ProcessingStatus, PaymentStatus
 from utils.logger import setup_logging, get_logger
 from datetime import datetime, timezone
 UTC = timezone.utc
+from google.cloud import firestore
 
 
 # --- FastAPI + Firestore setup ---
