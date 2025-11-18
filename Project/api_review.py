@@ -27,10 +27,15 @@ def create_fastapi_app(workflow, db):
         }
 
         # ⭐ FIX: use the SAME shared workflow instance
+        # result_state = await workflow.resume(
+        #     process_id=req.process_id,
+        #     input=review_input
+        # )
         result_state = await workflow.resume(
             process_id=req.process_id,
-            input=review_input
+            value=review_input
         )
+
 
         return {
             "ok": True,

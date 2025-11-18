@@ -118,14 +118,6 @@ from api_review import create_fastapi_app
 api = create_fastapi_app(shared_workflow, db)
 
 
-from google.auth.transport import requests as grequests
-from google.oauth2 import id_token
-
-def get_cloud_run_token():
-    auth_req = grequests.Request()
-    audience = "https://invoice-agenticai-753168549263.us-central1.run.app"  # MUST MATCH
-    return id_token.fetch_id_token(auth_req, audience)
-
 
 class InvoiceProcessingApp:
     """Main application class"""
@@ -153,7 +145,7 @@ class InvoiceProcessingApp:
 
     def initialize_workflow(self):
         if st.session_state.workflow is None:
-            st.session_state.workflow = get_workflow({})
+            st.session_state.workflow = shared_workflow
             st.session_state.workflow_initialized = True
             self.logger.info("Workflow initialized successfully.")
 
@@ -285,6 +277,7 @@ class InvoiceProcessingApp:
         for i, coro in enumerate(asyncio.as_completed(tasks), 1):
             state = await coro
             results.append(state)
+            st.session_state.current_process_id = state.process_id
             progress.progress(i / len(selected_files))
 
             # 🧩 Toast if escalation email was sent
