@@ -1,109 +1,42 @@
-# # file: api_review.py
-# from fastapi import FastAPI, HTTPException
-# from google.cloud import firestore
-# from graph import get_workflow
-
-# app = FastAPI()
-# db = firestore.Client()
-# workflow = get_workflow({})
-
-# @app.post("/api/review/submit")
-# async def submit_review(process_id: str, decision: str, reviewer: str, comments: str = ""):
-#     doc = db.collection("pending_reviews").document(process_id).get()
-#     if not doc.exists:
-#         raise HTTPException(status_code=404, detail="Pending review not found")
-
-#     # Delete pending record
-#     db.collection("pending_reviews").document(process_id).delete()
-
-#     review_input = {"decision": decision, "reviewer": reviewer, "comments": comments}
-
-#     # Resume graph execution from paused state
-#     await workflow.resume(process_id=process_id, node="human_review_node", value=review_input)
-#     return {"status": "resumed", "process_id": process_id}
-
+# api_review.py
 from fastapi import FastAPI, HTTPException
-from google.cloud import firestore
-from graph import get_workflow
 from pydantic import BaseModel
 
-app = FastAPI()
-db = firestore.Client()
-workflow = get_workflow({})
+def create_fastapi_app(workflow, db):
+    app = FastAPI()
 
-class ReviewRequest(BaseModel):
-    process_id: str
-    decision: str
-    reviewer: str
-    comments: str = ""
+    class ReviewRequest(BaseModel):
+        process_id: str
+        decision: str
+        reviewer: str
+        comments: str = ""
 
-# @app.post("/api/review/submit")
-# async def submit_review(req: ReviewRequest):
-#     doc = db.collection("pending_reviews").document(req.process_id).get()
-#     if not doc.exists:
-#         raise HTTPException(status_code=404, detail="Pending review not found")
+    @app.post("/api/review/submit")
+    async def submit_review(req: ReviewRequest):
 
-#     # Delete pending review
-#     db.collection("pending_reviews").document(req.process_id).delete()
+        doc = db.collection("pending_reviews").document(req.process_id).get()
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Pending review not found")
 
-#     review_input = {
-#         "decision": req.decision,
-#         "reviewer": req.reviewer,
-#         "comments": req.comments,
-#     }
+        db.collection("pending_reviews").document(req.process_id).delete()
 
-#     await workflow.resume(
-#         process_id=req.process_id,
-#         node="human_review_node",
-#         value=review_input
-#     )
+        review_input = {
+            "decision": req.decision,
+            "reviewer": req.reviewer,
+            "comments": req.comments,
+        }
 
-#     return {"status": "resumed", "process_id": req.process_id}
+        # ⭐ FIX: use the SAME shared workflow instance
+        result_state = await workflow.resume(
+            process_id=req.process_id,
+            input=review_input
+        )
 
+        return {
+            "ok": True,
+            "process_id": req.process_id,
+            "payment_status": result_state.payment_decision.payment_status.name,
+            "overall_status": result_state.overall_status.name
+        }
 
-from fastapi import FastAPI, HTTPException
-from google.cloud import firestore
-from graph import get_workflow
-from pydantic import BaseModel
-
-app = FastAPI()
-db = firestore.Client()
-workflow = get_workflow({})
-
-class ReviewRequest(BaseModel):
-    process_id: str
-    decision: str
-    reviewer: str
-    comments: str = ""
-
-@app.post("/api/review/submit")
-async def submit_review(req: ReviewRequest):
-
-    # ---- check Firestore ----
-    doc = db.collection("pending_reviews").document(req.process_id).get()
-    if not doc.exists:
-        raise HTTPException(status_code=404, detail="Pending review not found")
-
-    # delete pending review
-    db.collection("pending_reviews").document(req.process_id).delete()
-
-    # ---- prepare input that will be injected back into human_review_node ----
-    human_input = {
-        "decision": req.decision,
-        "reviewer": req.reviewer,
-        "comments": req.comments,
-    }
-
-    # ---- FIX: Correct resume() usage ----
-    result_state = await workflow.resume(
-        process_id=req.process_id,
-        input=human_input        # <-- correct name
-    )
-
-    # ---- return updated status to Streamlit ----
-    return {
-        "ok": True,
-        "process_id": req.process_id,
-        "payment_status": result_state.payment_decision.payment_status.name,
-        "overall_status": result_state.overall_status.name
-    }
+    return app

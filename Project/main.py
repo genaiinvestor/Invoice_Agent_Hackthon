@@ -102,13 +102,21 @@ from datetime import datetime, timezone
 UTC = timezone.utc
 from google.cloud import firestore
 from fastapi import FastAPI
-from api_review import app as api
+
 
 
 # --- FastAPI + Firestore setup ---
-db = firestore.Client()
-workflow = get_workflow({})
+# db = firestore.Client()
+# workflow = get_workflow({})
 # api = FastAPI()
+
+# Create ONE workflow instance
+shared_workflow = get_workflow({})
+db = firestore.Client()
+
+from api_review import create_fastapi_app
+api = create_fastapi_app(shared_workflow, db)
+
 
 from google.auth.transport import requests as grequests
 from google.oauth2 import id_token
