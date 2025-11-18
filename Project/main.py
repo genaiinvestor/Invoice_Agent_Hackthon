@@ -101,12 +101,13 @@ from datetime import datetime, timezone
 UTC = timezone.utc
 from google.cloud import firestore
 from fastapi import FastAPI
+from api_review import app as api
 
 
 # --- FastAPI + Firestore setup ---
 db = firestore.Client()
 workflow = get_workflow({})
-api = FastAPI()
+# api = FastAPI()
 
 from google.auth.transport import requests as grequests
 from google.oauth2 import id_token
@@ -527,7 +528,7 @@ class InvoiceProcessingApp:
 
             api_url = os.getenv(
                 "API_REVIEW_URL",
-                "https://invoice-agenticai-753168549263.us-central1.run.app/api/review/submit"
+                "http://127.0.0.1:8081/api/review/submit"
             )
 
             for doc in pending_docs:
@@ -557,23 +558,11 @@ class InvoiceProcessingApp:
                                 "reviewer": approver,
                                 "comments": "Approved via Streamlit dashboard",
                             }
-                            # res = requests.post(api_url, json=payload)
-                            # if res.status_code == 200:
-                            #     st.success(f"✅ Approved {invoice_number}. Workflow resumed.")
-                            # else:
-                            #     st.error(f"⚠️ API Error: {res.text}")
-
-                            try:
-                                token = get_cloud_run_token()
-                                headers = {"Authorization": f"Bearer {token}"}
-                                res = requests.post(api_url, json=payload, headers=headers)
-                            except Exception as ex:
-                                st.error(f"⚠️ Auth error: {ex}")
+                            res = requests.post(api_url, json=payload)
+                            if res.status_code == 200:
+                                st.success(f"✅ Approved {invoice_number}. Workflow resumed.")
                             else:
-                                if res.status_code == 200:
-                                    st.success(f"Approved {invoice_number}")
-                                else:
-                                    st.error(f"⚠️ API Error {res.status_code}: {res.text}")
+                                st.error(f"⚠️ API Error: {res.text}")
 
                     # REJECT
                     with col2:
@@ -584,22 +573,11 @@ class InvoiceProcessingApp:
                                 "reviewer": approver,
                                 "comments": "Rejected via Streamlit dashboard",
                             }
-                            # res = requests.post(api_url, json=payload)
-                            # if res.status_code == 200:
-                            #     st.error(f"🚫 Rejected {invoice_number}. Workflow updated.")
-                            # else:
-                            #     st.error(f"⚠️ API Error: {res.text}")
-                            try:
-                                token = get_cloud_run_token()
-                                headers = {"Authorization": f"Bearer {token}"}
-                                res = requests.post(api_url, json=payload, headers=headers)
-                            except Exception as ex:
-                                st.error(f"⚠️ Auth error: {ex}")
+                            res = requests.post(api_url, json=payload)
+                            if res.status_code == 200:
+                                st.error(f"🚫 Rejected {invoice_number}. Workflow updated.")
                             else:
-                                if res.status_code == 200:
-                                    st.success(f"Approved {invoice_number}")
-                                else:
-                                    st.error(f"⚠️ API Error {res.status_code}: {res.text}")
+                                st.error(f"⚠️ API Error: {res.text}")
 
             return  # IMPORTANT → Stop here, avoid showing local data
 
