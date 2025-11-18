@@ -137,6 +137,7 @@ class ProcessingStatus(str, Enum):
     ESCALATED = "escalated"
     COMPLETED = "completed"
     FAILED = "failed"
+    PAUSED = "PAUSED"
  
  
 class ValidationStatus(str, Enum):
