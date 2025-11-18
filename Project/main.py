@@ -340,9 +340,216 @@ class InvoiceProcessingApp:
     # Invoice Details Tab
     # ---------------------------------------------------------------------- #
    
-   
+    def render_escalations_tab(self):
+        import os
+        import streamlit as st
+        from google.cloud import firestore
+        import requests
+
+        st.markdown("#### 🚨 Escalation Summary")
+
+        results = st.session_state.get("results", [])
+        db = firestore.Client()
+
+        # =====================================================================
+        # 🔥 LOOK FOR PENDING REVIEW ONLY FOR THIS USER'S PROCESS ID
+        # =====================================================================
+        current_pid = st.session_state.get("current_process_id")
+        if current_pid:
+            query = db.collection("pending_reviews").where("process_id", "==", current_pid)
+            pending_docs = list(query.stream())
+        else:
+            pending_docs = []
+
+        # =====================================================================
+        # CASE 1 — PENDING CLOUD REVIEW (SHOW APPROVE/REJECT BUTTONS)
+        # =====================================================================
+        if pending_docs:
+            st.markdown("### 🕒 Pending Approval for Your Uploaded Invoice")
+
+            api_url = os.getenv(
+                "API_REVIEW_URL",
+                "http://127.0.0.1:8081/api/review/submit"
+            )
+
+            for doc in pending_docs:
+                data = doc.to_dict()
+
+                process_id = data.get("process_id")
+                invoice_number = data.get("invoice_number", "N/A")
+                priority = data.get("priority", "medium")
+                approver = data.get("approver", "Finance Manager")
+                created_at = data.get("created_at", "N/A")
+                status = data.get("status", "PENDING_REVIEW")
+
+                with st.expander(f"🧾 Invoice {invoice_number} — Priority: {priority}", expanded=False):
+                    st.write(f"**Process ID:** {process_id}")
+                    st.write(f"**Approver:** {approver}")
+                    st.write(f"**Created At:** {created_at}")
+                    st.write(f"**Status:** {status}")
+
+                    col1, col2 = st.columns(2)
+
+                    # -------------------------------------------------------------
+                    # APPROVE BUTTON
+                    # -------------------------------------------------------------
+                    with col1:
+                        if st.button(f"✅ Approve {invoice_number}", key=f"approve_{process_id}"):
+
+                            payload = {
+                                "process_id": process_id,
+                                "decision": "approved",
+                                "reviewer": approver,
+                                "comments": "Approved via Streamlit dashboard",
+                            }
+
+                            res = requests.post(api_url, json=payload)
+
+                            if res.status_code == 200:
+                                st.success(f"Approved {invoice_number}")
+
+                                updated = res.json()
+
+                                # ⭐ Update session state invoice
+                                for idx, r in enumerate(st.session_state.results):
+                                    if getattr(r, "process_id", None) == process_id:
+                                        r.payment_decision.payment_status = updated["payment_status"]
+                                        r.overall_status = updated["overall_status"]
+                                        r.human_review_required = False
+                                        st.session_state.results[idx] = r
+                                        break
+
+                                # ⭐ Remove from Firestore
+                                db.collection("pending_reviews").document(process_id).delete()
+
+                                st.rerun()
+                            else:
+                                st.error(f"⚠️ API Error: {res.text}")
+
+                    # -------------------------------------------------------------
+                    # REJECT BUTTON
+                    # -------------------------------------------------------------
+                    with col2:
+                        if st.button(f"❌ Reject {invoice_number}", key=f"reject_{process_id}"):
+
+                            payload = {
+                                "process_id": process_id,
+                                "decision": "rejected",
+                                "reviewer": approver,
+                                "comments": "Rejected via Streamlit dashboard",
+                            }
+
+                            res = requests.post(api_url, json=payload)
+
+                            if res.status_code == 200:
+                                st.error(f"Rejected {invoice_number}")
+
+                                updated = res.json()
+
+                                for idx, r in enumerate(st.session_state.results):
+                                    if getattr(r, "process_id", None) == process_id:
+                                        r.payment_decision.payment_status = updated["payment_status"]
+                                        r.overall_status = updated["overall_status"]
+                                        r.human_review_required = False
+                                        st.session_state.results[idx] = r
+                                        break
+
+                                db.collection("pending_reviews").document(process_id).delete()
+
+                                st.rerun()
+                            else:
+                                st.error(f"⚠️ API Error: {res.text}")
+
+            return  # 🔥 Do NOT show local escalations if cloud review exists
+
+        # =====================================================================
+        # CASE 2 — LOCAL MODE (NO CLOUD REVIEW FOUND)
+        # =====================================================================
+        if results:
+            st.markdown("### 🧾 Local Workflow Escalations (This Session)")
+
+            escalations = {}
+
+            for idx, r in enumerate(results):
+                inv = getattr(r, "invoice_data", None)
+                val = getattr(r, "validation_result", None)
+                esc = getattr(r, "escalation_record", None)
+                risk = getattr(r, "risk_assessment", None)
+
+                invoice_no = getattr(inv, "invoice_number", f"Unknown-{idx}")
+                process_id = getattr(r, "process_id", f"proc_{idx}")
+                file_name = os.path.basename(r.file_name)
+
+                risk_level_attr = getattr(risk, "risk_level", "low")
+                risk_level = (
+                    risk_level_attr.name.lower()
+                    if hasattr(risk_level_attr, "name")
+                    else str(risk_level_attr).split(".")[-1].lower()
+                )
+
+                if (
+                    risk_level in ("low", "none")
+                    and (not esc or not esc.get("reason"))
+                ):
+                    continue
+
+                if process_id not in escalations:
+                    escalations[process_id] = {
+                        "File": file_name,
+                        "Invoice #": invoice_no,
+                        "Issues": [],
+                        "Details": [],
+                        "Priority": "Medium",
+                        "Process ID": process_id,
+                    }
+
+                if val and (
+                    getattr(val, "validation_status", None) not in ("valid", "VALID")
+                    or (val.discrepancies and len(val.discrepancies) > 0)
+                ):
+                    discrepancy_text = ", ".join(val.discrepancies or [])
+                    escalations[process_id]["Issues"].append(
+                        f"Validation issues: {discrepancy_text}"
+                    )
+
+                if esc:
+                    escalations[process_id]["Issues"].append(esc.get("reason", "Escalation triggered"))
+                    escalations[process_id]["Details"].append(esc.get("summary", "N/A"))
+                    escalations[process_id]["Priority"] = esc.get("priority", "High")
+
+            if not escalations:
+                st.success("No escalations in this session.")
+                return
+
+            st.warning(f"{len(escalations)} invoice(s) require attention")
+
+            for e in escalations.values():
+                with st.expander(f"⚠️ {e['File']} — {', '.join(e['Issues'])}", expanded=False):
+                    st.write(f"**Invoice #:** {e['Invoice #']}")
+                    st.write(f"**Priority:** {e['Priority']}")
+                    st.write(f"**Process ID:** {e['Process ID']}")
+                    st.write("**Issues:**")
+                    for issue in e["Issues"]:
+                        st.markdown(f"- {issue}")
+
+                    if e["Details"]:
+                        st.write("**Details:**")
+                        for d in e["Details"]:
+                            st.markdown(f"- {d}")
+
+            st.info("These escalations are from your current session.")
+            return
+
+        # =====================================================================
+        # CASE 3 — NO ESCALATIONS ANYWHERE
+        # =====================================================================
+        st.info("📄 No escalations found in this session or Firestore.")
+
 
     
+
+   
+
 
     # def render_escalations_tab(self):
     #     import os
@@ -352,13 +559,180 @@ class InvoiceProcessingApp:
 
     #     st.markdown("#### 🚨 Escalation Summary")
 
+    #     # Load local results if any
     #     results = st.session_state.get("results", [])
-    #     has_local_results = bool(results)
 
-    #     # =====================================================
-    #     # 🔹 CASE 1 — LOCAL WORKFLOW MODE
-    #     # =====================================================
-    #     if has_local_results:
+    #     # Always check Firestore first
+    #     db = firestore.Client()
+
+    #     # ==========================================================
+    #     # 🔥 SHOW ONLY MY UPLOADED INVOICE (FILTERED BY process_id)
+    #     # ==========================================================
+    #     current_pid = st.session_state.get("current_process_id")
+
+    #     if current_pid:
+    #         query = db.collection("pending_reviews").where("process_id", "==", current_pid)
+    #         pending_docs = list(query.stream())
+    #     else:
+    #         pending_docs = []
+
+    #     # ==========================================================
+    #     # CASE 1 — ONLY MY PENDING CLOUD REVIEW (Approve/Reject)
+    #     # ==========================================================
+    #     if pending_docs:
+    #         st.markdown("### 🕒 Pending Approval for Your Uploaded Invoice")
+
+    #         api_url = os.getenv(
+    #             "API_REVIEW_URL",
+    #             "http://127.0.0.1:8081/api/review/submit"
+    #         )
+
+    #         for doc in pending_docs:
+    #             data = doc.to_dict()
+
+    #             process_id = data.get("process_id")
+    #             invoice_number = data.get("invoice_number", "N/A")
+    #             priority = data.get("priority", "medium")
+    #             approver = data.get("approver", "Finance Manager")
+    #             created_at = data.get("created_at", "N/A")
+    #             status = data.get("status", "PENDING_REVIEW")
+
+    #             with st.expander(f"🧾 Invoice {invoice_number} — Priority: {priority}", expanded=False):
+    #                 st.write(f"**Process ID:** {process_id}")
+    #                 st.write(f"**Approver:** {approver}")
+    #                 st.write(f"**Created At:** {created_at}")
+    #                 st.write(f"**Status:** {status}")
+
+    #                 col1, col2 = st.columns(2)
+
+    #                 # APPROVE
+    #                 with col1:
+    #                     # if st.button(f"✅ Approve {invoice_number}", key=f"approve_{process_id}"):
+    #                     #     payload = {
+    #                     #         "process_id": process_id,
+    #                     #         "decision": "approved",
+    #                     #         "reviewer": approver,
+    #                     #         "comments": "Approved via Streamlit dashboard",
+    #                     #     }
+    #                     #     res = requests.post(api_url, json=payload)
+    #                     #     if res.status_code == 200:
+    #                     #         st.success(f"✅ Approved {invoice_number}. Workflow resumed.")
+    #                     #     else:
+    #                     #         st.error(f"⚠️ API Error: {res.text}")
+    #                     if st.button(f"✅ Approve {invoice_number}", key=f"approve_{process_id}"):
+
+    #                         payload = {
+    #                             "process_id": process_id,
+    #                             "decision": "approved",
+    #                             "reviewer": approver,
+    #                             "comments": "Approved via Streamlit dashboard",
+    #                         }
+
+    #                         res = requests.post(api_url, json=payload)
+
+    #                         if res.status_code == 200:
+    #                             st.success(f"✅ Approved {invoice_number}")
+
+    #                             updated = res.json()
+
+    #                             # ⭐ Update this invoice's state inside session_state
+    #                             for idx, r in enumerate(st.session_state.results):
+    #                                 if getattr(r, "process_id", None) == process_id:
+    #                                     r.payment_decision.payment_status = updated["payment_status"]
+    #                                     r.overall_status = updated["overall_status"]
+    #                                     r.human_review_required = False
+    #                                     st.session_state.results[idx] = r
+    #                                     break
+
+    #                             # ⭐ Remove Firestore pending review
+    #                             db.collection("pending_reviews").document(process_id).delete()
+
+    #                             st.rerun()
+
+    #                         else:
+    #                             st.error(f"⚠️ API Error: {res.text}")
+    #                 # REJECT
+    #                 with col2:
+    #                     if st.button(f"❌ Reject {invoice_number}", key=f"reject_{process_id}"):
+
+    #                         payload = {
+    #                             "process_id": process_id,
+    #                             "decision": "rejected",
+    #                             "reviewer": approver,
+    #                             "comments": "Rejected via Streamlit dashboard",
+    #                         }
+
+    #                         res = requests.post(api_url, json=payload)
+
+    #                         if res.status_code == 200:
+    #                             st.error(f"🚫 Rejected {invoice_number}")
+
+    #                             updated = res.json()
+
+    #                             for idx, r in enumerate(st.session_state.results):
+    #                                 if getattr(r, "process_id", None) == process_id:
+    #                                     r.payment_decision.payment_status = updated["payment_status"]
+    #                                     r.overall_status = updated["overall_status"]
+    #                                     r.human_review_required = False
+    #                                     st.session_state.results[idx] = r
+    #                                     break
+
+    #                             db.collection("pending_reviews").document(process_id).delete()
+    #                             st.rerun()
+
+    #                         else:
+    #                             st.error(f"⚠️ API Error: {res.text}")
+    #                     if st.button(f"❌ Reject {invoice_number}", key=f"reject_{process_id}"):
+
+    #                         payload = {
+    #                             "process_id": process_id,
+    #                             "decision": "rejected",
+    #                             "reviewer": approver,
+    #                             "comments": "Rejected via Streamlit dashboard",
+    #                         }
+
+    #                         res = requests.post(api_url, json=payload)
+
+    #                         if res.status_code == 200:
+    #                             st.error(f"🚫 Rejected {invoice_number}")
+
+    #                             updated = res.json()
+
+    #                             for idx, r in enumerate(st.session_state.results):
+    #                                 if getattr(r, "process_id", None) == process_id:
+    #                                     r.payment_decision.payment_status = updated["payment_status"]
+    #                                     r.overall_status = updated["overall_status"]
+    #                                     r.human_review_required = False
+    #                                     st.session_state.results[idx] = r
+    #                                     break
+
+    #                             db.collection("pending_reviews").document(process_id).delete()
+    #                             st.rerun()
+
+    #                         else:
+    #                             st.error(f"⚠️ API Error: {res.text}")
+
+    #                     # if st.button(f"❌ Reject {invoice_number}", key=f"reject_{process_id}"):
+    #                     #     payload = {
+    #                     #         "process_id": process_id,
+    #                     #         "decision": "rejected",
+    #                     #         "reviewer": approver,
+    #                     #         "comments": "Rejected via Streamlit dashboard",
+    #                     #     }
+    #                     #     res = requests.post(api_url, json=payload)
+    #                     #     if res.status_code == 200:
+    #                     #         st.error(f"🚫 Rejected {invoice_number}. Workflow updated.")
+    #                     #     else:
+    #                     #         st.error(f"⚠️ API Error: {res.text}")
+
+    #         return  # IMPORTANT → Stop here, avoid showing local data
+
+    #     # ==========================================================
+    #     # CASE 2 — LOCAL MODE (NO FIRESTORE PENDING REVIEW)
+    #     # ==========================================================
+    #     if results:
+    #         st.markdown("### 🧾 Local Workflow Escalations (This Session)")
+
     #         escalations = {}
 
     #         for idx, r in enumerate(results):
@@ -370,16 +744,15 @@ class InvoiceProcessingApp:
     #             invoice_no = getattr(inv, "invoice_number", f"Unknown-{idx}")
     #             process_id = getattr(r, "process_id", f"proc_{idx}")
     #             file_name = os.path.basename(r.file_name)
-    #             risk_level_attr = getattr(risk, "risk_level", "low")
 
-    #             # Normalize risk
+    #             risk_level_attr = getattr(risk, "risk_level", "low")
     #             risk_level = (
     #                 risk_level_attr.name.lower()
     #                 if hasattr(risk_level_attr, "name")
     #                 else str(risk_level_attr).split(".")[-1].lower()
     #             )
 
-    #             # Skip low-risk invoices with no escalation
+    #             # Skip low-risk/no escalation
     #             if (
     #                 risk_level in ("low", "none")
     #                 and (not esc or (isinstance(esc, dict) and not esc.get("reason")))
@@ -417,7 +790,6 @@ class InvoiceProcessingApp:
 
     #         st.warning(f"{len(escalations)} invoice(s) require manual attention")
 
-    #         # Render local escalation cards (without approval buttons)
     #         for e in escalations.values():
     #             with st.expander(f"⚠️ {e['File']} — {', '.join(e['Issues'])}", expanded=False):
     #                 st.write(f"**Invoice #:** {e['Invoice #']}")
@@ -432,240 +804,13 @@ class InvoiceProcessingApp:
     #                     for d in e["Details"]:
     #                         st.markdown(f"- {d}")
 
-    #         st.info("ℹ️ These are escalations from this session (local mode).")
+    #         st.info("ℹ️ These escalations are ONLY from this session.")
+    #         return
 
-    #     # =====================================================
-    #     # 🔹 CASE 2 — CLOUD RUN (Firestore Pending Reviews)
-    #     # =====================================================
-    #     else:
-    #         st.markdown("### 🕒 Pending Human Approvals (Cloud Run Mode)")
-    #         try:
-    #             db = firestore.Client()
-    #             docs = list(db.collection("pending_reviews").stream())
-
-    #             if not docs:
-    #                 st.success("✅ No pending approvals found.")
-    #                 return
-
-    #             for doc in docs:
-    #                 data = doc.to_dict()
-    #                 process_id = data.get("process_id")
-    #                 invoice_number = data.get("invoice_number", "N/A")
-    #                 priority = data.get("priority", "medium")
-    #                 approver = data.get("approver", "Finance Manager")
-    #                 created_at = data.get("created_at", "N/A")
-
-    #                 with st.expander(f"🧾 Invoice {invoice_number} — Priority: {priority}", expanded=False):
-    #                     st.write(f"**Process ID:** {process_id}")
-    #                     st.write(f"**Approver:** {approver}")
-    #                     st.write(f"**Created At:** {created_at}")
-    #                     st.write(f"**Status:** {data.get('status', 'PENDING_REVIEW')}")
-
-    #                     api_url = os.getenv("API_REVIEW_URL", "https://invoice-agenticai-753168549263.us-central1.run.app/api/review/submit")
-
-    #                     col1, col2 = st.columns(2)
-    #                     with col1:
-    #                         if st.button(f"✅ Approve {invoice_number}", key=f"approve_{process_id}"):
-    #                             payload = {
-    #                                 "process_id": process_id,
-    #                                 "decision": "approved",
-    #                                 "reviewer": approver,
-    #                                 "comments": "Approved via Streamlit dashboard",
-    #                             }
-    #                             res = requests.post(api_url, json=payload)
-    #                             if res.status_code == 200:
-    #                                 st.success(f"✅ Approved {invoice_number}. Workflow resumed.")
-    #                             else:
-    #                                 st.error(f"⚠️ API Error: {res.text}")
-
-    #                     with col2:
-    #                         if st.button(f"❌ Reject {invoice_number}", key=f"reject_{process_id}"):
-    #                             payload = {
-    #                                 "process_id": process_id,
-    #                                 "decision": "rejected",
-    #                                 "reviewer": approver,
-    #                                 "comments": "Rejected via Streamlit dashboard",
-    #                             }
-    #                             res = requests.post(api_url, json=payload)
-    #                             if res.status_code == 200:
-    #                                 st.error(f"🚫 Rejected {invoice_number}. Workflow updated.")
-    #                             else:
-    #                                 st.error(f"⚠️ API Error: {res.text}")
-
-    #         except Exception as e:
-    #             st.error(f"⚠️ Could not load pending reviews from Firestore: {e}")
-
-
-    def render_escalations_tab(self):
-        import os
-        import streamlit as st
-        from google.cloud import firestore
-        import requests
-
-        st.markdown("#### 🚨 Escalation Summary")
-
-        # Load local results if any
-        results = st.session_state.get("results", [])
-
-        # Always check Firestore first
-        db = firestore.Client()
-
-        # ==========================================================
-        # 🔥 SHOW ONLY MY UPLOADED INVOICE (FILTERED BY process_id)
-        # ==========================================================
-        current_pid = st.session_state.get("current_process_id")
-
-        if current_pid:
-            query = db.collection("pending_reviews").where("process_id", "==", current_pid)
-            pending_docs = list(query.stream())
-        else:
-            pending_docs = []
-
-        # ==========================================================
-        # CASE 1 — ONLY MY PENDING CLOUD REVIEW (Approve/Reject)
-        # ==========================================================
-        if pending_docs:
-            st.markdown("### 🕒 Pending Approval for Your Uploaded Invoice")
-
-            api_url = os.getenv(
-                "API_REVIEW_URL",
-                "http://127.0.0.1:8081/api/review/submit"
-            )
-
-            for doc in pending_docs:
-                data = doc.to_dict()
-
-                process_id = data.get("process_id")
-                invoice_number = data.get("invoice_number", "N/A")
-                priority = data.get("priority", "medium")
-                approver = data.get("approver", "Finance Manager")
-                created_at = data.get("created_at", "N/A")
-                status = data.get("status", "PENDING_REVIEW")
-
-                with st.expander(f"🧾 Invoice {invoice_number} — Priority: {priority}", expanded=False):
-                    st.write(f"**Process ID:** {process_id}")
-                    st.write(f"**Approver:** {approver}")
-                    st.write(f"**Created At:** {created_at}")
-                    st.write(f"**Status:** {status}")
-
-                    col1, col2 = st.columns(2)
-
-                    # APPROVE
-                    with col1:
-                        if st.button(f"✅ Approve {invoice_number}", key=f"approve_{process_id}"):
-                            payload = {
-                                "process_id": process_id,
-                                "decision": "approved",
-                                "reviewer": approver,
-                                "comments": "Approved via Streamlit dashboard",
-                            }
-                            res = requests.post(api_url, json=payload)
-                            if res.status_code == 200:
-                                st.success(f"✅ Approved {invoice_number}. Workflow resumed.")
-                            else:
-                                st.error(f"⚠️ API Error: {res.text}")
-
-                    # REJECT
-                    with col2:
-                        if st.button(f"❌ Reject {invoice_number}", key=f"reject_{process_id}"):
-                            payload = {
-                                "process_id": process_id,
-                                "decision": "rejected",
-                                "reviewer": approver,
-                                "comments": "Rejected via Streamlit dashboard",
-                            }
-                            res = requests.post(api_url, json=payload)
-                            if res.status_code == 200:
-                                st.error(f"🚫 Rejected {invoice_number}. Workflow updated.")
-                            else:
-                                st.error(f"⚠️ API Error: {res.text}")
-
-            return  # IMPORTANT → Stop here, avoid showing local data
-
-        # ==========================================================
-        # CASE 2 — LOCAL MODE (NO FIRESTORE PENDING REVIEW)
-        # ==========================================================
-        if results:
-            st.markdown("### 🧾 Local Workflow Escalations (This Session)")
-
-            escalations = {}
-
-            for idx, r in enumerate(results):
-                inv = getattr(r, "invoice_data", None)
-                val = getattr(r, "validation_result", None)
-                esc = getattr(r, "escalation_record", None)
-                risk = getattr(r, "risk_assessment", None)
-
-                invoice_no = getattr(inv, "invoice_number", f"Unknown-{idx}")
-                process_id = getattr(r, "process_id", f"proc_{idx}")
-                file_name = os.path.basename(r.file_name)
-
-                risk_level_attr = getattr(risk, "risk_level", "low")
-                risk_level = (
-                    risk_level_attr.name.lower()
-                    if hasattr(risk_level_attr, "name")
-                    else str(risk_level_attr).split(".")[-1].lower()
-                )
-
-                # Skip low-risk/no escalation
-                if (
-                    risk_level in ("low", "none")
-                    and (not esc or (isinstance(esc, dict) and not esc.get("reason")))
-                    and not (hasattr(risk, "requires_human_review") and getattr(risk, "requires_human_review"))
-                ):
-                    continue
-
-                if process_id not in escalations:
-                    escalations[process_id] = {
-                        "File": file_name,
-                        "Invoice #": invoice_no,
-                        "Issues": [],
-                        "Details": [],
-                        "Priority": "Medium",
-                        "Process ID": process_id,
-                    }
-
-                if val and (
-                    getattr(val, "validation_status", None) not in ("valid", "VALID")
-                    or (val.discrepancies and len(val.discrepancies) > 0)
-                ):
-                    discrepancy_text = ", ".join(val.discrepancies or [])
-                    escalations[process_id]["Issues"].append(
-                        f"Validation issues: {discrepancy_text or 'Unknown validation issue'}"
-                    )
-
-                if esc:
-                    escalations[process_id]["Issues"].append(esc.get("reason", "Escalation triggered"))
-                    escalations[process_id]["Details"].append(esc.get("summary", "N/A"))
-                    escalations[process_id]["Priority"] = esc.get("priority", "High")
-
-            if not escalations:
-                st.success("✅ All invoices passed validation and no escalations detected.")
-                return
-
-            st.warning(f"{len(escalations)} invoice(s) require manual attention")
-
-            for e in escalations.values():
-                with st.expander(f"⚠️ {e['File']} — {', '.join(e['Issues'])}", expanded=False):
-                    st.write(f"**Invoice #:** {e['Invoice #']}")
-                    st.write(f"**Priority:** {e['Priority']}")
-                    st.write(f"**Process ID:** {e['Process ID']}")
-                    st.write("**Issues:**")
-                    for issue in e["Issues"]:
-                        st.markdown(f"- {issue}")
-
-                    if e["Details"]:
-                        st.write("**Details:**")
-                        for d in e["Details"]:
-                            st.markdown(f"- {d}")
-
-            st.info("ℹ️ These escalations are ONLY from this session.")
-            return
-
-        # ==========================================================
-        # CASE 3 — NOTHING TO SHOW
-        # ==========================================================
-        st.info("📄 No escalations found in this session or Firestore.")
+    #     # ==========================================================
+    #     # CASE 3 — NOTHING TO SHOW
+    #     # ==========================================================
+    #     st.info("📄 No escalations found in this session or Firestore.")
 
     def render_invoice_details_tab(self):
         import pandas as pd
