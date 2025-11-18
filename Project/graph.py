@@ -457,6 +457,8 @@ class InvoiceProcessingGraph:
         import uuid
         unique_id = uuid.uuid4().hex[:8]  # unique 8-char identifier
         process_id = f"proc_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{unique_id}"
+        st.session_state["current_process_id"] = process_id
+        print("DEBUG saved current_process_id =", process_id)
         state = InvoiceProcessingState(
             process_id=process_id,
             file_name=file_name,
