@@ -331,277 +331,158 @@ class InvoiceProcessingApp:
    
    
 
-    # def render_escalations_tab(self):
-    #     import os
-    #     import streamlit as st
+    
 
-    #     st.markdown("#### 🚨 Escalation Summary")
-    #     results = st.session_state.get("results", [])
+    def render_escalations_tab(self):
+        import os
+        import streamlit as st
+        from google.cloud import firestore
+        import requests
 
-    #     if not results:
-    #         st.info("No escalations or validation issues yet.")
-    #         return
+        st.markdown("#### 🚨 Escalation Summary")
 
-    #     # 🧩 Group escalations by process ID
-    #     escalations = {}
+        results = st.session_state.get("results", [])
+        has_local_results = bool(results)
 
-    #     for idx, r in enumerate(results):
-    #         inv = getattr(r, "invoice_data", None)
-    #         val = getattr(r, "validation_result", None)
-    #         esc = getattr(r, "escalation_record", None)
-    #         risk = getattr(r, "risk_assessment", None)
+        # =====================================================
+        # 🔹 CASE 1 — LOCAL WORKFLOW MODE
+        # =====================================================
+        if has_local_results:
+            escalations = {}
 
-    #         invoice_no = getattr(inv, "invoice_number", f"Unknown-{idx}")
-    #         process_id = getattr(r, "process_id", f"proc_{idx}")
-    #         file_name = os.path.basename(r.file_name)
-    #         # risk_level = str(getattr(risk, "risk_level", "low")).lower()
-    #         # print("RISK_LEVEL",risk_level)
+            for idx, r in enumerate(results):
+                inv = getattr(r, "invoice_data", None)
+                val = getattr(r, "validation_result", None)
+                esc = getattr(r, "escalation_record", None)
+                risk = getattr(r, "risk_assessment", None)
 
-    #         risk_level_attr = getattr(risk, "risk_level", "low")
+                invoice_no = getattr(inv, "invoice_number", f"Unknown-{idx}")
+                process_id = getattr(r, "process_id", f"proc_{idx}")
+                file_name = os.path.basename(r.file_name)
+                risk_level_attr = getattr(risk, "risk_level", "low")
 
-    #         # Handle enum or string form safely
-    #         if hasattr(risk_level_attr, "name"):
-    #             risk_level = risk_level_attr.name.lower()
-    #         else:
-    #             risk_level = str(risk_level_attr).split(".")[-1].lower()
-    #         print("RISK_LEVEL (normalized):", risk_level)
-    #         # 🚫 Skip low-risk invoices without escalation
-    #         # if risk_level in ("low", "none") and not esc:
-    #         #     continue
-
-
-    #         # 🚫 Skip if low risk, no real escalation, and no human review flag
-    #         if (
-    #             risk_level in ("low", "none")
-    #             and (not esc or (isinstance(esc, dict) and not esc.get("reason")))
-    #             and not (hasattr(risk, "requires_human_review") and getattr(risk, "requires_human_review") is True)
-    #         ):
-    #             print(f"[DEBUG] Skipping {invoice_no}: risk={risk_level}, esc={esc}")
-
-    #             continue
-
-    #         # Initialize entry
-    #         if process_id not in escalations:
-    #             print("Escalation process_id:", process_id)
-
-    #             escalations[process_id] = {
-    #                 "File": file_name,
-    #                 "Invoice #": invoice_no,
-    #                 "Issues": [],
-    #                 "Details": [],
-    #                 "Priority": "Medium",
-    #                 "Process ID": process_id,
-    #             }
-
-    #         # Add issues
-    #         if val and (
-    #             getattr(val, "validation_status", None) not in ("valid", "VALID")
-    #             or (val.discrepancies and len(val.discrepancies) > 0)
-    #         ):
-    #             discrepancy_text = ", ".join(val.discrepancies or [])
-    #             escalations[process_id]["Issues"].append(
-    #                 f"Validation issues: {discrepancy_text or 'Unknown validation issue'}"
-    #             )
-
-    #         if esc:
-    #             escalations[process_id]["Issues"].append(esc.get("reason", "Escalation triggered"))
-    #             escalations[process_id]["Details"].append(esc.get("summary", "N/A"))
-    #             escalations[process_id]["Priority"] = esc.get("priority", "High")
-
-    #     if not escalations:
-    #         st.success("✅ All invoices passed validation and no escalations detected.")
-    #         return
-
-    #     st.warning(f"{len(escalations)} invoice(s) require manual attention")
-
-    #     # --- Render escalation cards ---
-    #     for idx, e in enumerate(escalations.values()):
-    #         process_id = e["Process ID"]
-    #         invoice_no = e["Invoice #"]
-    #         review_status = st.session_state.get(f"review_status_{process_id}", "pending")
-
-    #         with st.expander(f"⚠️ {e['File']} — {', '.join(e['Issues'])}", expanded=False):
-    #             st.write(f"**Invoice #:** {invoice_no}")
-    #             st.write(f"**Priority:** {e['Priority']}")
-    #             st.write(f"**Process ID:** {process_id}")
-    #             st.write("**Issues:**")
-    #             for issue in e["Issues"]:
-    #                 st.markdown(f"- {issue}")
-
-    #             if e["Details"]:
-    #                 st.write("**Details:**")
-    #                 for d in e["Details"]:
-    #                     st.markdown(f"- {d}")
-
-    #             # ✅ Show buttons only for pending ones
-    #             if review_status == "pending":
-    #                 col1, col2 = st.columns(2)
-    #                 approve_key = f"approve_{process_id}"
-    #                 reject_key = f"reject_{process_id}"
-
-    #                 with col1:
-    #                     if st.button(f"✅ Approve {invoice_no}", key=approve_key):
-    #                         self.handle_human_decision(e, decision="approved")
-
-    #                 with col2:
-    #                     if st.button(f"❌ Reject {invoice_no}", key=reject_key):
-    #                         self.handle_human_decision(e, decision="rejected")
-
-    #             elif review_status == "approved":
-    #                 st.success(f"🧾 Invoice {invoice_no} has been APPROVED by reviewer.")
-    #             elif review_status == "rejected":
-    #                 st.error(f"🚫 Invoice {invoice_no} has been REJECTED by reviewer.")
-
-def render_escalations_tab(self):
-    import os
-    import streamlit as st
-    from google.cloud import firestore
-    import requests
-
-    st.markdown("#### 🚨 Escalation Summary")
-
-    results = st.session_state.get("results", [])
-    has_local_results = bool(results)
-
-    # =====================================================
-    # 🔹 CASE 1 — LOCAL WORKFLOW MODE
-    # =====================================================
-    if has_local_results:
-        escalations = {}
-
-        for idx, r in enumerate(results):
-            inv = getattr(r, "invoice_data", None)
-            val = getattr(r, "validation_result", None)
-            esc = getattr(r, "escalation_record", None)
-            risk = getattr(r, "risk_assessment", None)
-
-            invoice_no = getattr(inv, "invoice_number", f"Unknown-{idx}")
-            process_id = getattr(r, "process_id", f"proc_{idx}")
-            file_name = os.path.basename(r.file_name)
-            risk_level_attr = getattr(risk, "risk_level", "low")
-
-            # Normalize risk
-            risk_level = (
-                risk_level_attr.name.lower()
-                if hasattr(risk_level_attr, "name")
-                else str(risk_level_attr).split(".")[-1].lower()
-            )
-
-            # Skip low-risk invoices with no escalation
-            if (
-                risk_level in ("low", "none")
-                and (not esc or (isinstance(esc, dict) and not esc.get("reason")))
-                and not (hasattr(risk, "requires_human_review") and getattr(risk, "requires_human_review"))
-            ):
-                continue
-
-            if process_id not in escalations:
-                escalations[process_id] = {
-                    "File": file_name,
-                    "Invoice #": invoice_no,
-                    "Issues": [],
-                    "Details": [],
-                    "Priority": "Medium",
-                    "Process ID": process_id,
-                }
-
-            if val and (
-                getattr(val, "validation_status", None) not in ("valid", "VALID")
-                or (val.discrepancies and len(val.discrepancies) > 0)
-            ):
-                discrepancy_text = ", ".join(val.discrepancies or [])
-                escalations[process_id]["Issues"].append(
-                    f"Validation issues: {discrepancy_text or 'Unknown validation issue'}"
+                # Normalize risk
+                risk_level = (
+                    risk_level_attr.name.lower()
+                    if hasattr(risk_level_attr, "name")
+                    else str(risk_level_attr).split(".")[-1].lower()
                 )
 
-            if esc:
-                escalations[process_id]["Issues"].append(esc.get("reason", "Escalation triggered"))
-                escalations[process_id]["Details"].append(esc.get("summary", "N/A"))
-                escalations[process_id]["Priority"] = esc.get("priority", "High")
+                # Skip low-risk invoices with no escalation
+                if (
+                    risk_level in ("low", "none")
+                    and (not esc or (isinstance(esc, dict) and not esc.get("reason")))
+                    and not (hasattr(risk, "requires_human_review") and getattr(risk, "requires_human_review"))
+                ):
+                    continue
 
-        if not escalations:
-            st.success("✅ All invoices passed validation and no escalations detected.")
-            return
+                if process_id not in escalations:
+                    escalations[process_id] = {
+                        "File": file_name,
+                        "Invoice #": invoice_no,
+                        "Issues": [],
+                        "Details": [],
+                        "Priority": "Medium",
+                        "Process ID": process_id,
+                    }
 
-        st.warning(f"{len(escalations)} invoice(s) require manual attention")
+                if val and (
+                    getattr(val, "validation_status", None) not in ("valid", "VALID")
+                    or (val.discrepancies and len(val.discrepancies) > 0)
+                ):
+                    discrepancy_text = ", ".join(val.discrepancies or [])
+                    escalations[process_id]["Issues"].append(
+                        f"Validation issues: {discrepancy_text or 'Unknown validation issue'}"
+                    )
 
-        # Render local escalation cards (without approval buttons)
-        for e in escalations.values():
-            with st.expander(f"⚠️ {e['File']} — {', '.join(e['Issues'])}", expanded=False):
-                st.write(f"**Invoice #:** {e['Invoice #']}")
-                st.write(f"**Priority:** {e['Priority']}")
-                st.write(f"**Process ID:** {e['Process ID']}")
-                st.write("**Issues:**")
-                for issue in e["Issues"]:
-                    st.markdown(f"- {issue}")
+                if esc:
+                    escalations[process_id]["Issues"].append(esc.get("reason", "Escalation triggered"))
+                    escalations[process_id]["Details"].append(esc.get("summary", "N/A"))
+                    escalations[process_id]["Priority"] = esc.get("priority", "High")
 
-                if e["Details"]:
-                    st.write("**Details:**")
-                    for d in e["Details"]:
-                        st.markdown(f"- {d}")
-
-        st.info("ℹ️ These are escalations from this session (local mode).")
-
-    # =====================================================
-    # 🔹 CASE 2 — CLOUD RUN (Firestore Pending Reviews)
-    # =====================================================
-    else:
-        st.markdown("### 🕒 Pending Human Approvals (Cloud Run Mode)")
-        try:
-            db = firestore.Client()
-            docs = list(db.collection("pending_reviews").stream())
-
-            if not docs:
-                st.success("✅ No pending approvals found.")
+            if not escalations:
+                st.success("✅ All invoices passed validation and no escalations detected.")
                 return
 
-            for doc in docs:
-                data = doc.to_dict()
-                process_id = data.get("process_id")
-                invoice_number = data.get("invoice_number", "N/A")
-                priority = data.get("priority", "medium")
-                approver = data.get("approver", "Finance Manager")
-                created_at = data.get("created_at", "N/A")
+            st.warning(f"{len(escalations)} invoice(s) require manual attention")
 
-                with st.expander(f"🧾 Invoice {invoice_number} — Priority: {priority}", expanded=False):
-                    st.write(f"**Process ID:** {process_id}")
-                    st.write(f"**Approver:** {approver}")
-                    st.write(f"**Created At:** {created_at}")
-                    st.write(f"**Status:** {data.get('status', 'PENDING_REVIEW')}")
+            # Render local escalation cards (without approval buttons)
+            for e in escalations.values():
+                with st.expander(f"⚠️ {e['File']} — {', '.join(e['Issues'])}", expanded=False):
+                    st.write(f"**Invoice #:** {e['Invoice #']}")
+                    st.write(f"**Priority:** {e['Priority']}")
+                    st.write(f"**Process ID:** {e['Process ID']}")
+                    st.write("**Issues:**")
+                    for issue in e["Issues"]:
+                        st.markdown(f"- {issue}")
 
-                    api_url = os.getenv("API_REVIEW_URL", "https://invoice-agenticai-753168549263.us-central1.run.app/api/review/submit")
+                    if e["Details"]:
+                        st.write("**Details:**")
+                        for d in e["Details"]:
+                            st.markdown(f"- {d}")
 
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.button(f"✅ Approve {invoice_number}", key=f"approve_{process_id}"):
-                            payload = {
-                                "process_id": process_id,
-                                "decision": "approved",
-                                "reviewer": approver,
-                                "comments": "Approved via Streamlit dashboard",
-                            }
-                            res = requests.post(api_url, json=payload)
-                            if res.status_code == 200:
-                                st.success(f"✅ Approved {invoice_number}. Workflow resumed.")
-                            else:
-                                st.error(f"⚠️ API Error: {res.text}")
+            st.info("ℹ️ These are escalations from this session (local mode).")
 
-                    with col2:
-                        if st.button(f"❌ Reject {invoice_number}", key=f"reject_{process_id}"):
-                            payload = {
-                                "process_id": process_id,
-                                "decision": "rejected",
-                                "reviewer": approver,
-                                "comments": "Rejected via Streamlit dashboard",
-                            }
-                            res = requests.post(api_url, json=payload)
-                            if res.status_code == 200:
-                                st.error(f"🚫 Rejected {invoice_number}. Workflow updated.")
-                            else:
-                                st.error(f"⚠️ API Error: {res.text}")
+        # =====================================================
+        # 🔹 CASE 2 — CLOUD RUN (Firestore Pending Reviews)
+        # =====================================================
+        else:
+            st.markdown("### 🕒 Pending Human Approvals (Cloud Run Mode)")
+            try:
+                db = firestore.Client()
+                docs = list(db.collection("pending_reviews").stream())
 
-        except Exception as e:
-            st.error(f"⚠️ Could not load pending reviews from Firestore: {e}")
+                if not docs:
+                    st.success("✅ No pending approvals found.")
+                    return
+
+                for doc in docs:
+                    data = doc.to_dict()
+                    process_id = data.get("process_id")
+                    invoice_number = data.get("invoice_number", "N/A")
+                    priority = data.get("priority", "medium")
+                    approver = data.get("approver", "Finance Manager")
+                    created_at = data.get("created_at", "N/A")
+
+                    with st.expander(f"🧾 Invoice {invoice_number} — Priority: {priority}", expanded=False):
+                        st.write(f"**Process ID:** {process_id}")
+                        st.write(f"**Approver:** {approver}")
+                        st.write(f"**Created At:** {created_at}")
+                        st.write(f"**Status:** {data.get('status', 'PENDING_REVIEW')}")
+
+                        api_url = os.getenv("API_REVIEW_URL", "https://invoice-agenticai-753168549263.us-central1.run.app/api/review/submit")
+
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button(f"✅ Approve {invoice_number}", key=f"approve_{process_id}"):
+                                payload = {
+                                    "process_id": process_id,
+                                    "decision": "approved",
+                                    "reviewer": approver,
+                                    "comments": "Approved via Streamlit dashboard",
+                                }
+                                res = requests.post(api_url, json=payload)
+                                if res.status_code == 200:
+                                    st.success(f"✅ Approved {invoice_number}. Workflow resumed.")
+                                else:
+                                    st.error(f"⚠️ API Error: {res.text}")
+
+                        with col2:
+                            if st.button(f"❌ Reject {invoice_number}", key=f"reject_{process_id}"):
+                                payload = {
+                                    "process_id": process_id,
+                                    "decision": "rejected",
+                                    "reviewer": approver,
+                                    "comments": "Rejected via Streamlit dashboard",
+                                }
+                                res = requests.post(api_url, json=payload)
+                                if res.status_code == 200:
+                                    st.error(f"🚫 Rejected {invoice_number}. Workflow updated.")
+                                else:
+                                    st.error(f"⚠️ API Error: {res.text}")
+
+            except Exception as e:
+                st.error(f"⚠️ Could not load pending reviews from Firestore: {e}")
 
 
     def render_invoice_details_tab(self):
@@ -851,223 +732,7 @@ def render_escalations_tab(self):
     
 
 
-    # def render_escalations_tab(self):
-    #     import os
-    #     import streamlit as st
-
-    #     st.markdown("#### 🚨 Escalation Summary")
-    #     results = st.session_state.get("results", [])
-
-    #     if not results:
-    #         st.info("No escalations or validation issues yet.")
-    #         return
-
-    #     # Use dict keyed by invoice number to merge issues (avoid duplicates)
-    #     escalations = {}
-
-    #     for idx, r in enumerate(results):
-    #         inv = getattr(r, "invoice_data", None)
-    #         risk = getattr(r, "risk_assessment", None)
-    #         esc = getattr(r, "escalation_record", None)
-    #         process_id = getattr(r, "process_id", f"proc_{idx}")
-    #         invoice_no = getattr(inv, "invoice_number", f"Unknown-{idx}")
-    #         file_name = os.path.basename(r.file_name)
-
-    #         # ✅ Filter only real escalations
-    #         # Skip if no escalation record and risk doesn't require review
-    #         if not esc and not (risk and getattr(risk, "requires_human_review", False)):
-    #             continue
-
-    #         # Initialize entry if not present
-    #         if invoice_no not in escalations:
-    #             escalations[invoice_no] = {
-    #                 "File": file_name,
-    #                 "Invoice #": invoice_no,
-    #                 "Issues": [],
-    #                 "Details": [],
-    #                 "Priority": "Medium",
-    #                 "Process ID": process_id,
-    #             }
-
-    #         # Add escalation reasons
-    #         if esc:
-    #             escalations[invoice_no]["Issues"].append(esc.get("reason", "Escalation triggered"))
-    #             escalations[invoice_no]["Details"].append(esc.get("summary", "N/A"))
-    #             escalations[invoice_no]["Priority"] = esc.get("priority", "High")
-
-    #         # Add human-review-required invoices
-    #         elif risk and getattr(risk, "requires_human_review", False):
-    #             escalations[invoice_no]["Issues"].append("Manual review required (risk agent)")
-    #             escalations[invoice_no]["Details"].append(
-    #                 f"Risk Level: {getattr(risk, 'risk_level', 'N/A')}"
-    #             )
-
-    #     # ✅ No escalations at all
-    #     if not escalations:
-    #         st.success("✅ All invoices passed automatically. No manual review needed.")
-    #         return
-
-    #     st.warning(f"{len(escalations)} invoice(s) require manual attention")
-
-    #     # --- Render each escalation ---
-    #     for idx, e in enumerate(escalations.values()):
-    #         process_id = e["Process ID"]
-    #         review_status = st.session_state.get(f"review_status_{process_id}", "pending")
-
-    #         with st.expander(f"⚠️ {e['File']} — {', '.join(e['Issues'])}", expanded=False):
-    #             st.write(f"**Invoice #:** {e['Invoice #']}")
-    #             st.write("**Issues:**")
-    #             for issue in e["Issues"]:
-    #                 st.markdown(f"- {issue}")
-    #             st.write("**Details:**")
-    #             for detail in e["Details"]:
-    #                 st.markdown(f"- {detail}")
-    #             st.write(f"**Priority:** {e['Priority']}")
-    #             st.write(f"**Process ID:** {e['Process ID']}")
-
-    #             # --- Buttons section ---
-    #             if review_status == "pending":
-    #                 col1, col2 = st.columns(2)
-    #                 approve_key = f"approve_{process_id}_{idx}"
-    #                 reject_key = f"reject_{process_id}_{idx}"
-
-    #                 with col1:
-    #                     if st.button(f"✅ Approve {e['Invoice #']}", key=approve_key):
-    #                         st.session_state[f"review_status_{process_id}"] = "approved"
-    #                         self.handle_human_decision(e, decision="approved")
-
-    #                 with col2:
-    #                     if st.button(f"❌ Reject {e['Invoice #']}", key=reject_key):
-    #                         st.session_state[f"review_status_{process_id}"] = "rejected"
-    #                         self.handle_human_decision(e, decision="rejected")
-
-    #             else:
-    #                 # Show status instead of buttons
-    #                 if review_status == "approved":
-    #                     st.success(f"🧾 Invoice {e['Invoice #']} has been APPROVED by reviewer.")
-    #                 elif review_status == "rejected":
-    #                     st.error(f"🚫 Invoice {e['Invoice #']} has been REJECTED by reviewer.")
-    #                 else:
-    #                     st.info(f"Invoice {e['Invoice #']} review status: {review_status}")
-
-
-
-
-    # def render_escalations_tab(self):
-    #     import os
-    #     import streamlit as st
-
-    #     st.markdown("#### 🚨 Escalation Summary")
-    #     results = st.session_state.get("results", [])
-
-    #     if not results:
-    #         st.info("No escalations or validation issues yet.")
-    #         return
-
-    #     # 🧩 Dictionary to group escalations by invoice number
-    #     escalations_by_invoice = {}
-
-    #     for idx, r in enumerate(results):
-    #         inv = getattr(r, "invoice_data", None)
-    #         val = getattr(r, "validation_result", None)
-    #         esc = getattr(r, "escalation_record", None)
-    #         risk = getattr(r, "risk_assessment", None)
-
-    #         invoice_no = getattr(inv, "invoice_number", f"Unknown-{idx}")
-    #         process_id = getattr(r, "process_id", f"proc_{idx}")
-    #         file_name = os.path.basename(r.file_name)
-
-    #         # 🚫 Skip low-risk invoices
-    #         risk_level = str(getattr(risk, "risk_level", "low")).lower()
-    #         if risk_level in ("low", "none"):
-    #             continue
-
-    #         # Initialize single entry per invoice
-    #         if invoice_no not in escalations_by_invoice:
-    #             escalations_by_invoice[invoice_no] = {
-    #                 "File": file_name,
-    #                 "Invoice #": invoice_no,
-    #                 "Issues": [],
-    #                 "Details": [],
-    #                 "Priority": "Medium",
-    #                 "Process ID": process_id,
-    #             }
-
-    #         # 🧾 Add validation issue (if any)
-    #         if val and (
-    #             getattr(val, "validation_status", None) not in ("valid", "VALID")
-    #             or (val.discrepancies and len(val.discrepancies) > 0)
-    #         ):
-    #             discrepancy_text = ", ".join(val.discrepancies or [])
-    #             escalations_by_invoice[invoice_no]["Issues"].append(
-    #                 f"Validation issues: {discrepancy_text or 'Unknown validation issue'}"
-    #             )
-    #             escalations_by_invoice[invoice_no]["Details"].append(
-    #                 f"Expected: {getattr(val, 'expected_amount', 'N/A')}, "
-    #                 f"Invoice Total: {getattr(inv, 'total', 'N/A')}"
-    #             )
-
-    #         # 🚨 Add escalation record (if exists)
-    #         if esc:
-    #             escalations_by_invoice[invoice_no]["Issues"].append(
-    #                 esc.get("reason", "Escalation triggered")
-    #             )
-    #             escalations_by_invoice[invoice_no]["Details"].append(
-    #                 esc.get("summary", "N/A")
-    #             )
-    #             escalations_by_invoice[invoice_no]["Priority"] = esc.get("priority", "High")
-
-    #     # ✅ Convert dict to list
-    #     escalations = list(escalations_by_invoice.values())
-
-    #     if not escalations:
-    #         st.success("✅ All invoices passed validation and no escalations detected.")
-    #         return
-
-    #     # --- Display summary ---
-    #     st.warning(f"{len(escalations)} invoice(s) require manual attention")
-
-    #     for idx, e in enumerate(escalations):
-    #         invoice_no = e["Invoice #"]
-    #         process_id = e["Process ID"]
-
-    #         with st.expander(f"⚠️ {e['File']} — {', '.join(e['Issues'])}", expanded=False):
-    #             st.write(f"**Invoice #:** {invoice_no}")
-    #             st.write("**Issues:**")
-    #             for issue in e["Issues"]:
-    #                 st.markdown(f"- {issue}")
-    #             st.write("**Details:**")
-    #             for detail in e["Details"]:
-    #                 st.markdown(f"- {detail}")
-    #             st.write(f"**Priority:** {e['Priority']}")
-    #             st.write(f"**Process ID:** {process_id}")
-
-    #             # --- Check review status (to hide buttons after approval/rejection)
-    #             review_status = st.session_state.get(f"review_status_{process_id}", "pending")
-
-    #             col1, col2 = st.columns(2)
-    #             approve_key = f"approve_{invoice_no}_{idx}"
-    #             reject_key = f"reject_{invoice_no}_{idx}"
-
-    #             if review_status == "pending":
-    #                 with col1:
-    #                     if st.button(f"✅ Approve {invoice_no}", key=approve_key):
-    #                         self.handle_human_decision(e, decision="approved")
-
-    #                 with col2:
-    #                     if st.button(f"❌ Reject {invoice_no}", key=reject_key):
-    #                         self.handle_human_decision(e, decision="rejected")
-    #             else:
-    #                 # ✅ Show final reviewed status
-    #                 if review_status == "approved":
-    #                     st.success(f"🧾 Invoice {invoice_no} has been APPROVED by reviewer.")
-    #                 elif review_status == "rejected":
-    #                     st.error(f"🧾 Invoice {invoice_no} has been REJECTED by reviewer.")
-
-
-   
-
-
+    
     # ---------------------------------------------------------------------- #
     # Analytics Tab
     # ---------------------------------------------------------------------- #
@@ -1119,7 +784,6 @@ def render_escalations_tab(self):
                 st.success(f"✅ Completed processing {len(selected_files)} invoice(s).")
 
         self.render_main_dashboard()
-
 
 if __name__ == "__main__":
     # --- Start FastAPI in background ---
