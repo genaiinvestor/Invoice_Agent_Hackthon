@@ -279,7 +279,16 @@ class PaymentAgent(BaseAgent):
         scheduled_date = (datetime.utcnow() + timedelta(days=1)).isoformat()
  
         if action == "reject_payment":
-            return PaymentDecision(
+            # return PaymentDecision(
+            #     payment_status=PaymentStatus.REJECTED,
+            #     approved_amount=0.0,
+            #     transaction_id=None,
+            #     payment_method=payment_method,
+            #     approval_chain=[],
+            #     rejection_reason="Rejected due to rule-based high risk or fraud suspicion",
+            #     scheduled_date=None
+            # )
+            pd = PaymentDecision(
                 payment_status=PaymentStatus.REJECTED,
                 approved_amount=0.0,
                 transaction_id=None,
@@ -288,9 +297,19 @@ class PaymentAgent(BaseAgent):
                 rejection_reason="Rejected due to rule-based high risk or fraud suspicion",
                 scheduled_date=None
             )
+            return pd.__dict__
  
         if action == "route_to_executive":
-            return PaymentDecision(
+            # return PaymentDecision(
+            #     payment_status=PaymentStatus.PENDING_APPROVAL,
+            #     approved_amount=0.0,
+            #     transaction_id=None,
+            #     payment_method=payment_method,
+            #     approval_chain=["finance_manager_approval", "cfo_approval"],
+            #     rejection_reason=None,
+            #     scheduled_date=scheduled_date
+            # )
+            pd = PaymentDecision(
                 payment_status=PaymentStatus.PENDING_APPROVAL,
                 approved_amount=0.0,
                 transaction_id=None,
@@ -299,9 +318,19 @@ class PaymentAgent(BaseAgent):
                 rejection_reason=None,
                 scheduled_date=scheduled_date
             )
+            return pd.__dict__
  
         if action == "route_to_manager":
-            return PaymentDecision(
+            # return PaymentDecision(
+            #     payment_status=PaymentStatus.PENDING_APPROVAL,
+            #     approved_amount=amount,
+            #     transaction_id=None,
+            #     payment_method=payment_method,
+            #     approval_chain=["finance_manager_approval"],
+            #     rejection_reason=None,
+            #     scheduled_date=scheduled_date
+            # )
+            pd = PaymentDecision(
                 payment_status=PaymentStatus.PENDING_APPROVAL,
                 approved_amount=amount,
                 transaction_id=None,
@@ -310,9 +339,19 @@ class PaymentAgent(BaseAgent):
                 rejection_reason=None,
                 scheduled_date=scheduled_date
             )
+            return pd.__dict__
  
         if action == "process_immediately":
-            return PaymentDecision(
+            # return PaymentDecision(
+            #     payment_status=PaymentStatus.APPROVED,
+            #     approved_amount=amount,
+            #     transaction_id=None,
+            #     payment_method=payment_method,
+            #     approval_chain=["system_auto_approval"],
+            #     rejection_reason=None,
+            #     scheduled_date=scheduled_date
+            # )
+            pd = PaymentDecision(
                 payment_status=PaymentStatus.APPROVED,
                 approved_amount=amount,
                 transaction_id=None,
@@ -321,9 +360,20 @@ class PaymentAgent(BaseAgent):
                 rejection_reason=None,
                 scheduled_date=scheduled_date
             )
+            return pd.__dict__
+
  
         # Default fallback
-        return PaymentDecision(
+        # return PaymentDecision(
+        #     payment_status=PaymentStatus.PENDING_APPROVAL,
+        #     approved_amount=amount,
+        #     transaction_id=None,
+        #     payment_method=payment_method,
+        #     approval_chain=["finance_manager_approval"],
+        #     rejection_reason=None,
+        #     scheduled_date=scheduled_date
+        # )
+        pd = PaymentDecision(
             payment_status=PaymentStatus.PENDING_APPROVAL,
             approved_amount=amount,
             transaction_id=None,
@@ -332,6 +382,7 @@ class PaymentAgent(BaseAgent):
             rejection_reason=None,
             scheduled_date=scheduled_date
         )
+        return pd.__dict__
    
     def _match_conditions(
         self,

@@ -175,13 +175,22 @@ class InvoiceProcessingGraph:
                 "overall_status": "completed",
                 "human_review_required": False,
                 "updated_at":datetime.utcnow().isoformat(),
-                "payment_decision":{
-                    "payment_status":"approved" if decision_value == "approved" else "rejected",
-                    "method":"manual_review",
-                    "reviewed_by":value.get("reviewer"),
-                    "review_comments":value.get("comments"),
-                    "timestamp":value.get("timestamp"),
+                "payment_decision": {
+                    "payment_status": "approved" if decision_value == "approved" else "rejected",
+                    "approved_amount": 0.0,
+                    "transaction_id": None,
+                    "payment_method": "manual_review",
+                    "approval_chain": [],
+                    "rejection_reason": None if decision_value == "approved" else "Rejected by reviewer",
+                    "scheduled_date": datetime.utcnow().isoformat()
                 },
+                # "payment_decision":{
+                #     "payment_status":"approved" if decision_value == "approved" else "rejected",
+                #     "method":"manual_review",
+                #     "reviewed_by":value.get("reviewer"),
+                #     "review_comments":value.get("comments"),
+                #     "timestamp":value.get("timestamp"),
+                # },
                 "decision_record": value
             }
 

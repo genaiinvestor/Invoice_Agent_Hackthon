@@ -275,8 +275,9 @@ class InvoiceProcessingState(BaseModel):
     invoice_data: Optional[InvoiceData] = None
     validation_result: Optional[ValidationResult] = None
     risk_assessment: Optional[RiskAssessment] = None
-    payment_decision: Optional[PaymentDecision] = None
- 
+    # payment_decision: Optional[PaymentDecision] = None
+    payment_decision: dict | None = None
+
     # Audit and metrics
     audit_trail: List[AuditTrail] = []
     agent_metrics: Dict[str, AgentMetrics] = {}
