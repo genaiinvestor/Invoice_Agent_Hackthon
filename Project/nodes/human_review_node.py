@@ -107,13 +107,21 @@ async def human_review_node(state: InvoiceProcessingState) -> InvoiceProcessingS
     # ---------------------------------------------------------
     # 5️⃣ Update state with review outcome
     # ---------------------------------------------------------
-    state.payment_decision = type("PaymentDecision", (), {
-        "payment_status": payment_status,
+    # state.payment_decision = type("PaymentDecision", (), {
+    #     "payment_status": payment_status,
+    #     "approved_amount": getattr(state.invoice_data, "total", 0.0),
+    #     "method": "MANUAL_REVIEW",
+    #     "reviewed_by": reviewer,
+    #     "review_comments": comments,
+    # })()
+
+    state.payment_decision = {
+        "payment_status": payment_status.name if hasattr(payment_status, "name") else str(payment_status),
         "approved_amount": getattr(state.invoice_data, "total", 0.0),
         "method": "MANUAL_REVIEW",
         "reviewed_by": reviewer,
         "review_comments": comments,
-    })()
+    }
 
     output_json = {
         "human_review": {
