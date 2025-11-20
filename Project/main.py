@@ -991,69 +991,69 @@ class InvoiceProcessingApp:
 
 
 
-    def handle_human_decision(self, escalation, decision: str):
-        """Handle manual approval/rejection of a single invoice without affecting others."""
-        import asyncio
-        import streamlit as st
-        from datetime import datetime, UTC
-        from graph import get_workflow
-        from state import ProcessingStatus, PaymentStatus
+    # def handle_human_decision(self, escalation, decision: str):
+    #     """Handle manual approval/rejection of a single invoice without affecting others."""
+    #     import asyncio
+    #     import streamlit as st
+    #     from datetime import datetime, UTC
+    #     from graph import get_workflow
+    #     from state import ProcessingStatus, PaymentStatus
 
-        invoice_no = escalation.get("Invoice #")
-        process_id = escalation.get("Process ID")
+    #     invoice_no = escalation.get("Invoice #")
+    #     process_id = escalation.get("Process ID")
 
-        st.toast(
-            f"🧠 Reviewer marked Invoice {invoice_no} as {decision.upper()}",
-            icon="✅" if decision == "approved" else "❌",
-        )
+    #     st.toast(
+    #         f"🧠 Reviewer marked Invoice {invoice_no} as {decision.upper()}",
+    #         icon="✅" if decision == "approved" else "❌",
+    #     )
 
-        decision_data = {
-            "decision": decision,
-            "reviewer": "Risk Manager",
-            "comments": f"Manually {decision} by Risk Manager.",
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
+    #     decision_data = {
+    #         "decision": decision,
+    #         "reviewer": "Risk Manager",
+    #         "comments": f"Manually {decision} by Risk Manager.",
+    #         "timestamp": datetime.now(UTC).isoformat(),
+    #     }
 
-        try:
-            workflow = get_workflow({})
+    #     try:
+    #         workflow = get_workflow({})
 
-            # ✅ Resume only the correct workflow instance
-            updated_state = asyncio.run(
-                workflow.resume(
-                    process_id=process_id,
-                    node="human_review_node",  # make sure node name matches
-                    value=decision_data,
-                )
-            )
+    #         # ✅ Resume only the correct workflow instance
+    #         updated_state = asyncio.run(
+    #             workflow.resume(
+    #                 process_id=process_id,
+    #                 node="human_review_node",  # make sure node name matches
+    #                 value=decision_data,
+    #             )
+    #         )
 
-            # ✅ Update only this invoice in session_state
-            for idx, r in enumerate(st.session_state.results):
-                if getattr(r, "process_id", None) == process_id:
-                    # Update key fields only, not replace the whole object
-                    r.overall_status = ProcessingStatus.COMPLETED
-                    r.human_review_required = False
-                    r.escalation_record = getattr(r, "escalation_record", None)
+    #         # ✅ Update only this invoice in session_state
+    #         for idx, r in enumerate(st.session_state.results):
+    #             if getattr(r, "process_id", None) == process_id:
+    #                 # Update key fields only, not replace the whole object
+    #                 r.overall_status = ProcessingStatus.COMPLETED
+    #                 r.human_review_required = False
+    #                 r.escalation_record = getattr(r, "escalation_record", None)
 
-                    r.payment_decision = type("PaymentDecision", (), {
-                        "payment_status": PaymentStatus.APPROVED if decision == "approved" else PaymentStatus.REJECTED,
-                        "approved_amount": getattr(r.invoice_data, "total", 0.0),
-                        "method": "MANUAL_REVIEW",
-                        "reviewed_by": "Risk Manager",
-                        "review_comments": f"Manually {decision} by Risk Manager.",
-                    })()
+    #                 r.payment_decision = type("PaymentDecision", (), {
+    #                     "payment_status": PaymentStatus.APPROVED if decision == "approved" else PaymentStatus.REJECTED,
+    #                     "approved_amount": getattr(r.invoice_data, "total", 0.0),
+    #                     "method": "MANUAL_REVIEW",
+    #                     "reviewed_by": "Risk Manager",
+    #                     "review_comments": f"Manually {decision} by Risk Manager.",
+    #                 })()
 
-                    # ✅ Keep other attributes intact (invoice_data, validation_result, etc.)
-                    st.session_state.results[idx] = r
-                    break  # stop loop once found
-            st.session_state[f"review_status_{process_id}"] = decision
+    #                 # ✅ Keep other attributes intact (invoice_data, validation_result, etc.)
+    #                 st.session_state.results[idx] = r
+    #                 break  # stop loop once found
+    #         st.session_state[f"review_status_{process_id}"] = decision
                    
 
-            st.rerun()
+    #         st.rerun()
 
-        except Exception as err:
-            import traceback
-            st.error(f"⚠️ Failed to resume workflow for {invoice_no}: {err}")
-            st.text(traceback.format_exc())
+    #     except Exception as err:
+    #         import traceback
+    #         st.error(f"⚠️ Failed to resume workflow for {invoice_no}: {err}")
+    #         st.text(traceback.format_exc())
 
 
 
