@@ -195,13 +195,19 @@ class PaymentAgent(BaseAgent):
             risk = state.risk_assessment
  
             decision = await self._make_payment_decision(inv, val, risk, state)
-            state.payment_decision = decision
- 
+            # state.payment_decision = decision
+            state.payment_decision = (
+                decision.__dict__ if hasattr(decision, "__dict__") else decision
+            )
+
             if decision.payment_status == PaymentStatus.APPROVED:
                 result = await self._execute_payment(inv, decision)
                 decision = self._update_payment_decision(decision, result)
-                state.payment_decision = decision
- 
+                # state.payment_decision = decision
+                state.payment_decision = (
+                    decision.__dict__ if hasattr(decision, "__dict__") else decision
+                )
+
             # ✅ Explicit log for visibility
             self.logger.info(
                 f"PaymentAgent Output: status={decision.payment_status}, "
