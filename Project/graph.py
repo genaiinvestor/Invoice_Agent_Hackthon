@@ -148,72 +148,100 @@ class InvoiceProcessingGraph:
     # ----------------------------------------------------------------------
 # Resume Workflow (for human review)
 # ----------------------------------------------------------------------
-    async def resume(self, process_id: str, node: str, value: dict):
-        """
-        Resume a paused workflow (e.g., after human review interrupt).
-        """
-        from datetime import datetime
-        self.logger.info(f"[RESUME] Resuming {process_id} at node '{node}' with value={value}")
+    # async def resume(self, process_id: str, node: str, value: dict):
+    #     """
+    #     Resume a paused workflow (e.g., after human review interrupt).
+    #     """
+    #     from datetime import datetime
+    #     self.logger.info(f"[RESUME] Resuming {process_id} at node '{node}' with value={value}")
  
-        try:
-            # ✅ Use unique namespace tied to this process_id
-            # result = await self.workflow_graph.ainvoke(
-            #     input=value,
-            #     config={
-            #         "configurable": {
-            #             "thread_id": process_id,
-            #             "checkpoint_ns": f"invoice_ns_{process_id}",
-            #         }
-            #     },
+    #     try:
+    #         # ✅ Use unique namespace tied to this process_id
+    #         # result = await self.workflow_graph.ainvoke(
+    #         #     input=value,
+    #         #     config={
+    #         #         "configurable": {
+    #         #             "thread_id": process_id,
+    #         #             "checkpoint_ns": f"invoice_ns_{process_id}",
+    #         #         }
+    #         #     },
                 
-            # )
+    #         # )
             
-            decision_value = value.get("decision","").lower()
-            wrapped_value = {
-                "process_id":process_id,
-                "file_name": f"resumed_{process_id}.pdf",
-                "overall_status": "completed",
-                "human_review_required": False,
-                "updated_at":datetime.utcnow().isoformat(),
-                "payment_decision": {
-                    "payment_status": "approved" if decision_value == "approved" else "rejected",
-                    "approved_amount": 0.0,
-                    "transaction_id": None,
-                    "payment_method": "manual_review",
-                    "approval_chain": [],
-                    "rejection_reason": None if decision_value == "approved" else "Rejected by reviewer",
-                    "scheduled_date": datetime.utcnow().isoformat()
-                },
-                # "payment_decision":{
-                #     "payment_status":"approved" if decision_value == "approved" else "rejected",
-                #     "method":"manual_review",
-                #     "reviewed_by":value.get("reviewer"),
-                #     "review_comments":value.get("comments"),
-                #     "timestamp":value.get("timestamp"),
-                # },
-                "decision_record": value
-            }
+    #         decision_value = value.get("decision","").lower()
+    #         wrapped_value = {
+    #             "process_id":process_id,
+    #             "file_name": f"resumed_{process_id}.pdf",
+    #             "overall_status": "completed",
+    #             "human_review_required": False,
+    #             "updated_at":datetime.utcnow().isoformat(),
+    #             "payment_decision": {
+    #                 "payment_status": "approved" if decision_value == "approved" else "rejected",
+    #                 "approved_amount": 0.0,
+    #                 "transaction_id": None,
+    #                 "payment_method": "manual_review",
+    #                 "approval_chain": [],
+    #                 "rejection_reason": None if decision_value == "approved" else "Rejected by reviewer",
+    #                 "scheduled_date": datetime.utcnow().isoformat()
+    #             },
+    #             # "payment_decision":{
+    #             #     "payment_status":"approved" if decision_value == "approved" else "rejected",
+    #             #     "method":"manual_review",
+    #             #     "reviewed_by":value.get("reviewer"),
+    #             #     "review_comments":value.get("comments"),
+    #             #     "timestamp":value.get("timestamp"),
+    #             # },
+    #             "decision_record": value
+    #         }
 
-            result = await self.workflow_graph.ainvoke(
-                input=wrapped_value,
-                config={
-                    "configurable": {
-                        "thread_id": process_id,
-                        "checkpoint_ns": f"invoice_ns_{process_id}",
-                    }
-                },   
-            )
+    #         result = await self.workflow_graph.ainvoke(
+    #             input=wrapped_value,
+    #             config={
+    #                 "configurable": {
+    #                     "thread_id": process_id,
+    #                     "checkpoint_ns": f"invoice_ns_{process_id}",
+    #                 }
+    #             },   
+    #         )
             
-            final_state = self._extract_final_state(result, None)
-            self.logger.info(f"[RESUME_COMPLETE] Successfully resumed {process_id}")
-            return final_state
+    #         final_state = self._extract_final_state(result, None)
+    #         self.logger.info(f"[RESUME_COMPLETE] Successfully resumed {process_id}")
+    #         return final_state
  
-        except Exception as e:
-            import traceback
-            self.logger.error(f"[RESUME_FAILED] Resume error for {process_id}: {e}")
-            self.logger.error(traceback.format_exc())
-            raise
+    #     except Exception as e:
+    #         import traceback
+    #         self.logger.error(f"[RESUME_FAILED] Resume error for {process_id}: {e}")
+    #         self.logger.error(traceback.format_exc())
+    #         raise
  
+        async def resume(self, process_id: str, value: dict):
+            """
+            Correct: resumes the paused workflow at human_review_node
+            """
+            self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+
+            try:
+                result = await self.workflow_graph.ainvoke(
+                    input=value,
+                    config={
+                        "configurable": {
+                            "thread_id": process_id,
+                            "checkpoint_ns": f"invoice_ns_{process_id}",
+                            "resume": value
+                        }
+                    },
+                )
+
+                final_state = self._extract_final_state(result, None)
+                self.logger.info(f"[RESUME_COMPLETE] {process_id}")
+                return final_state
+
+            except Exception as e:
+                import traceback
+                self.logger.error(f"[RESUME_FAILED] {e}")
+                self.logger.error(traceback.format_exc())
+                raise
+
  
     # ----------------------------------------------------------------------
     # Graph Creation
@@ -583,9 +611,30 @@ class InvoiceProcessingGraph:
 invoice_workflow = None
  
  
-def get_workflow(config: Dict[str, Any] = None) -> InvoiceProcessingGraph:
-    """Factory getter to create a singleton workflow instance."""
+# def get_workflow(config: Dict[str, Any] = None) -> InvoiceProcessingGraph:
+#     """Factory getter to create a singleton workflow instance."""
+#     global invoice_workflow
+#     if not invoice_workflow:
+#         invoice_workflow = InvoiceProcessingGraph(config)
+#     return invoice_workflow
+
+# Global singleton workflow instance
+invoice_workflow = None
+
+def get_workflow(config: Dict[str, Any] = None):
+    """Returns a singleton InvoiceProcessingGraph with Firestore-injected initial state."""
     global invoice_workflow
-    if not invoice_workflow:
+
+    if invoice_workflow is None:
+        db = firestore.Client()
+
+        # ⭐ Create the workflow instance exactly as before
         invoice_workflow = InvoiceProcessingGraph(config)
+
+        # ⭐ Inject Firestore client into the DEFAULT initial state template
+        # So every new process_invoice() call will inherit state.db
+        invoice_workflow.initial_state = InvoiceProcessingState(
+            db=db
+        )
+
     return invoice_workflow

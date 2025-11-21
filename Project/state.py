@@ -266,6 +266,9 @@ class InvoiceProcessingState(BaseModel):
     process_id: Optional[str] = Field(default_factory=lambda: f"proc_{uuid4().hex[:8]}")
     file_name: str
  
+  # ⭐ ADD THIS FOR FIRESTORE SUPPORT
+    db: Any | None = None
+
     # Processing status
     overall_status: Optional[ProcessingStatus] = ProcessingStatus.PENDING
     current_agent: Optional[str] = None
