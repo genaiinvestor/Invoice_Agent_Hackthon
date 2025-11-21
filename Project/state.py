@@ -269,8 +269,8 @@ class InvoiceProcessingState(BaseModel):
     file_name: str
  
   # ⭐ ADD THIS FOR FIRESTORE SUPPORT
-    # db: Any | None = None
-    db: Any | None = Field(default=None, exclude=True)
+    
+    
     # Processing status
     overall_status: Optional[ProcessingStatus] = ProcessingStatus.PENDING
     current_agent: Optional[str] = None

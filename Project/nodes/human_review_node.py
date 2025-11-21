@@ -240,7 +240,22 @@ async def human_review_node(state: InvoiceProcessingState) -> InvoiceProcessingS
         # ---- ALWAYS save pending review to Firestore ----
         logger.warning("Pausing for manual human review (Firestore).")
 
-        if state.db:
+        # if state.db:
+        #     pending_doc = {
+        #         "process_id": process_id,
+        #         "invoice_number": invoice_number,
+        #         "priority": priority,
+        #         "approver": approver,
+        #         "escalation_id": escalation.get("escalation_id"),
+        #         "status": "PENDING_REVIEW",
+        #         "created_at": datetime.now(UTC).isoformat(),
+        #     }
+        #     state.db.collection("pending_reviews").document(process_id).set(pending_doc)
+        #     logger.info(f"Saved pending review request for process_id={process_id}")
+
+            from google.cloud import firestore
+            db = firestore.Client()
+
             pending_doc = {
                 "process_id": process_id,
                 "invoice_number": invoice_number,
@@ -250,7 +265,8 @@ async def human_review_node(state: InvoiceProcessingState) -> InvoiceProcessingS
                 "status": "PENDING_REVIEW",
                 "created_at": datetime.now(UTC).isoformat(),
             }
-            state.db.collection("pending_reviews").document(process_id).set(pending_doc)
+
+            db.collection("pending_reviews").document(process_id).set(pending_doc)
             logger.info(f"Saved pending review request for process_id={process_id}")
 
         # ---- Finish pause ----
@@ -299,5 +315,5 @@ async def human_review_node(state: InvoiceProcessingState) -> InvoiceProcessingS
     state.overall_status = ProcessingStatus.COMPLETED
     state.human_review_required = False
 
-    # return state
-    return state.dict()
+    return state
+    # return state.dict()
