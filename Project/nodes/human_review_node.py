@@ -252,7 +252,6 @@ async def human_review_node(state: InvoiceProcessingState) -> InvoiceProcessingS
         #     }
         #     state.db.collection("pending_reviews").document(process_id).set(pending_doc)
         #     logger.info(f"Saved pending review request for process_id={process_id}")
-
             from google.cloud import firestore
             db = firestore.Client()
 
