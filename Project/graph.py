@@ -124,7 +124,7 @@ from utils.logger import StructuredLogger
 class InvoiceProcessingGraph:
     """Main LangGraph-based orchestrator for multi-agent invoice automation"""
  
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: Dict[str, Any] = None,db=None):
         self.config = config or {}
         self.logger = StructuredLogger("InvoiceWorkflow")
         self.memory = MemorySaver()
@@ -132,6 +132,7 @@ class InvoiceProcessingGraph:
         self.workflow_graph = self._create_workflow_graph()
         self.graph = self.workflow_graph
         self.compiled_graph = self.workflow_graph
+        self.db = db
  
  
     # ----------------------------------------------------------------------
@@ -505,6 +506,7 @@ class InvoiceProcessingGraph:
             workflow_type=workflow_type,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
+            db=self.db, 
         )
  
         self.logger.log_workflow_start(workflow_type, process_id, file=file_name)
@@ -609,7 +611,7 @@ class InvoiceProcessingGraph:
 # ----------------------------------------------------------------------
 # Factory function
 # ----------------------------------------------------------------------
-invoice_workflow = None
+# invoice_workflow = None
  
  
 # def get_workflow(config: Dict[str, Any] = None) -> InvoiceProcessingGraph:
@@ -620,22 +622,35 @@ invoice_workflow = None
 #     return invoice_workflow
 
 # Global singleton workflow instance
+# invoice_workflow = None
+
+# def get_workflow(config: Dict[str, Any] = None):
+#     """Returns a singleton InvoiceProcessingGraph with Firestore-injected initial state."""
+#     global invoice_workflow
+
+#     if invoice_workflow is None:
+#         db = firestore.Client()
+
+#         # ⭐ Create the workflow instance exactly as before
+#         invoice_workflow = InvoiceProcessingGraph(config)
+
+#         # ⭐ Inject Firestore client into the DEFAULT initial state template
+#         # So every new process_invoice() call will inherit state.db
+#         invoice_workflow.initial_state = InvoiceProcessingState(
+#             db=db
+#         )
+
+#     return invoice_workflow
+
+from google.cloud import firestore
+
 invoice_workflow = None
 
-def get_workflow(config: Dict[str, Any] = None):
-    """Returns a singleton InvoiceProcessingGraph with Firestore-injected initial state."""
+def get_workflow(config=None):
     global invoice_workflow
 
     if invoice_workflow is None:
         db = firestore.Client()
-
-        # ⭐ Create the workflow instance exactly as before
-        invoice_workflow = InvoiceProcessingGraph(config)
-
-        # ⭐ Inject Firestore client into the DEFAULT initial state template
-        # So every new process_invoice() call will inherit state.db
-        invoice_workflow.initial_state = InvoiceProcessingState(
-            db=db
-        )
+        invoice_workflow = InvoiceProcessingGraph(config, db=db)
 
     return invoice_workflow
