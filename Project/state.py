@@ -260,6 +260,8 @@ class InvoiceProcessingState(BaseModel):
     """Central shared state for LangGraph workflow"""
     # Core identifiers
     # process_id: str
+
+    model_config = {"use_enum_values": True}
  
 
     # file_name: str
@@ -267,8 +269,8 @@ class InvoiceProcessingState(BaseModel):
     file_name: str
  
   # ⭐ ADD THIS FOR FIRESTORE SUPPORT
-    db: Any | None = None
-
+    # db: Any | None = None
+    db: Any | None = Field(default=None, exclude=True)
     # Processing status
     overall_status: Optional[ProcessingStatus] = ProcessingStatus.PENDING
     current_agent: Optional[str] = None
@@ -299,8 +301,10 @@ class InvoiceProcessingState(BaseModel):
 
  
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    # created_at: datetime = Field(default_factory=datetime.utcnow)
+    # updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.utcnow, exclude=True)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, exclude=True)
  
     def log_action(self, agent_name: str, action: str, status: str, details: Dict[str, Any] = None, duration_ms: int = 0, error_message: str = None):
         """Add a log entry to the audit trail"""

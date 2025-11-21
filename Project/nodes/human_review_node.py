@@ -299,4 +299,5 @@ async def human_review_node(state: InvoiceProcessingState) -> InvoiceProcessingS
     state.overall_status = ProcessingStatus.COMPLETED
     state.human_review_required = False
 
-    return state
+    # return state
+    return state.dict()
