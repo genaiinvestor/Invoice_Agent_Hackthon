@@ -414,7 +414,8 @@ class InvoiceProcessingApp:
                                 # ⭐ Update session state invoice
                                 for idx, r in enumerate(st.session_state.results):
                                     if getattr(r, "process_id", None) == process_id:
-                                        r.payment_decision.get("payment_status") = PaymentStatus[updated["payment_status"]]
+                                        # r.payment_decision.get("payment_status") = PaymentStatus[updated["payment_status"]]
+                                        r.payment_decision["payment_status"] = updated["payment_status"]
                                         r.overall_status = ProcessingStatus[updated["overall_status"]]
                                         r.human_review_required = False
                                         st.session_state.results[idx] = r
@@ -449,7 +450,8 @@ class InvoiceProcessingApp:
 
                                 for idx, r in enumerate(st.session_state.results):
                                     if getattr(r, "process_id", None) == process_id:
-                                        r.payment_decision.get("payment_status") = PaymentStatus[updated["payment_status"]] 
+                                        # r.payment_decision.get("payment_status") = PaymentStatus[updated["payment_status"]] 
+                                        r.payment_decision["payment_status"] = updated["payment_status"]
                                         r.overall_status = ProcessingStatus[updated["overall_status"]]
                                         r.human_review_required = False
                                         st.session_state.results[idx] = r
