@@ -104,6 +104,7 @@ from langgraph.graph import StateGraph
 from langgraph.checkpoint.memory import MemorySaver
 from datetime import datetime, timezone
 UTC = timezone.utc
+from google.cloud import firestore
 
 from nodes.human_review_node import human_review_node
 from state import (
