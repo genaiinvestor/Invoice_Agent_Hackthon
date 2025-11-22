@@ -462,7 +462,7 @@ class InvoiceProcessingGraph:
     #     return new_state.dict()
 
     async def _human_review_node(self, state: InvoiceProcessingState, *, config=None):
-        new_state = await human_review_node(state, config=config)
+        new_state = await human_review_node(state,config={"db": self.db})
         return new_state.dict()
 
     async def _end_node(self, state: InvoiceProcessingState):
