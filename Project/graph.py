@@ -348,11 +348,35 @@ class InvoiceProcessingGraph:
     #     )
 
     #     return self._extract_final_state(result, None)
+    # async def resume(self, process_id: str, value: dict):
+    #     self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+
+    #     wrapped_input = {
+    #         "resume": {"value": value}
+    #     }
+
+    #     result = await self.workflow_graph.ainvoke(
+    #         wrapped_input,
+    #         config={
+    #             "configurable": {
+    #                 "thread_id": process_id,
+    #                 "checkpoint_ns": f"invoice_ns_{process_id}",
+    #                 "db": self.db
+    #             }
+    #         }
+    #     )
+
+    #     return self._extract_final_state(result, None)
+
     async def resume(self, process_id: str, value: dict):
         self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
 
         wrapped_input = {
-            "resume": {"value": value}
+            "resume": {"value": value},
+
+            # ⭐ REQUIRED REAL STATE KEYS ⭐
+            "current_agent": "human_review_node",
+            "updated_at": datetime.utcnow().isoformat()
         }
 
         result = await self.workflow_graph.ainvoke(
@@ -368,7 +392,6 @@ class InvoiceProcessingGraph:
 
         return self._extract_final_state(result, None)
 
- 
     # ----------------------------------------------------------------------
     # Graph Creation
     # ----------------------------------------------------------------------
