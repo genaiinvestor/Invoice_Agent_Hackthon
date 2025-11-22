@@ -215,8 +215,8 @@ async def human_review_node(state: InvoiceProcessingState) -> InvoiceProcessingS
     # 2️⃣ If workflow resumed (Approve/Reject) → use that
     # ---------------------------------------------------------
     resume_obj = getattr(state, "resume", None)
-    if resume_obj and resume_obj.value:
-        review_input = resume_obj.value
+    if resume_obj and "value" in resume_obj:
+        review_input = resume_obj["value"]
         logger.info(f"Resumed human review for {process_id}: {json.dumps(review_input)}")
 
     else:

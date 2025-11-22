@@ -434,17 +434,36 @@ class InvoiceProcessingGraph:
  
  
  
- 
- 
     def _route_after_payment(self, state: InvoiceProcessingState) -> Literal["audit", "escalation", "end"]:
-        if not state.payment_decision:
+        pd = getattr(state, "payment_decision", None)
+
+        # No decision → escalate
+        if not pd:
             self.logger.log_escalation("payment_agent", state.process_id, "Missing payment decision.")
             return "escalation"
-        if state.payment_decision.payment_status == PaymentStatus.REJECTED:
+
+        # Extract status correctly from dict
+        status = pd.get("payment_status")
+
+        # If reviewer rejected → escalate
+        if status == "REJECTED" or status == PaymentStatus.REJECTED.name:
             self.logger.log_escalation("payment_agent", state.process_id, "Payment rejected.")
             state.escalation_required = True
             return "escalation"
+
+        # Otherwise move to audit
         return "audit"
+
+ 
+    # def _route_after_payment(self, state: InvoiceProcessingState) -> Literal["audit", "escalation", "end"]:
+    #     if not state.payment_decision:
+    #         self.logger.log_escalation("payment_agent", state.process_id, "Missing payment decision.")
+    #         return "escalation"
+    #     if state.payment_decision.payment_status == PaymentStatus.REJECTED:
+    #         self.logger.log_escalation("payment_agent", state.process_id, "Payment rejected.")
+    #         state.escalation_required = True
+    #         return "escalation"
+    #     return "audit"
  
     # def _route_after_audit(self, state: InvoiceProcessingState) -> Literal["escalation", "end"]:
     #     if hasattr(state, "audit_report") and \
