@@ -280,41 +280,63 @@ class InvoiceProcessingGraph:
     #         self.logger.error(traceback.format_exc())
     #         raise
 
+    # async def resume(self, process_id: str, value: dict):
+
+    #     self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+
+    #     try:
+    #         # ⭐ MUST include at least one real state key
+    #         wrapped_input = {
+    #             "resume": { "value": value },
+
+    #             # REAL STATE UPDATE REQUIRED
+    #             "human_review_required": False,
+    #             "overall_status": "completed",
+    #             "current_agent": "human_review_node",
+    #             "updated_at": datetime.utcnow().isoformat()
+    #         }
+
+    #         result = await self.workflow_graph.ainvoke(
+    #             input=wrapped_input,
+    #             config={
+    #                 "configurable": {
+    #                     "thread_id": process_id,
+    #                     "checkpoint_ns": f"invoice_ns_{process_id}"
+    #                 }
+    #             }
+    #         )
+
+    #         final_state = self._extract_final_state(result, None)
+    #         self.logger.info(f"[RESUME_COMPLETE] {process_id}")
+    #         return final_state
+
+    #     except Exception as e:
+    #         import traceback
+    #         self.logger.error(f"[RESUME_FAILED] {e}")
+    #         self.logger.error(traceback.format_exc())
+    #         raise
+
     async def resume(self, process_id: str, value: dict):
-
         self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+        wrapped_input = {
+            "resume": {"value": value},
+            "human_review_required": False,
+            "current_agent": "human_review_node",
+            "updated_at": datetime.utcnow().isoformat(),
+            "overall_status": "completed"
+        }
 
-        try:
-            # ⭐ MUST include at least one real state key
-            wrapped_input = {
-                "resume": { "value": value },
-
-                # REAL STATE UPDATE REQUIRED
-                "human_review_required": False,
-                "overall_status": "completed",
-                "current_agent": "human_review_node",
-                "updated_at": datetime.utcnow().isoformat()
-            }
-
-            result = await self.workflow_graph.ainvoke(
-                input=wrapped_input,
-                config={
-                    "configurable": {
-                        "thread_id": process_id,
-                        "checkpoint_ns": f"invoice_ns_{process_id}"
-                    }
+        result = await self.workflow_graph.ainvoke(
+            wrapped_input,
+            config={
+                "configurable": {
+                    "thread_id": process_id,
+                    "checkpoint_ns": f"invoice_ns_{process_id}"
                 }
-            )
+            }
+        )
 
-            final_state = self._extract_final_state(result, None)
-            self.logger.info(f"[RESUME_COMPLETE] {process_id}")
-            return final_state
-
-        except Exception as e:
-            import traceback
-            self.logger.error(f"[RESUME_FAILED] {e}")
-            self.logger.error(traceback.format_exc())
-            raise
+        return self._extract_final_state(result, None)
 
  
     # ----------------------------------------------------------------------
@@ -373,43 +395,75 @@ class InvoiceProcessingGraph:
     # ----------------------------------------------------------------------
     # Agent execution nodes
     # ----------------------------------------------------------------------
-    async def _document_agent_node(self, state: InvoiceProcessingState) -> InvoiceProcessingState:
-        return await agent_registry.get("document_agent").run(state)
+    # async def _document_agent_node(self, state: InvoiceProcessingState) -> InvoiceProcessingState:
+    #     return await agent_registry.get("document_agent").run(state)
  
-        # return await agent_registry.get("document_agent").execute(state)
+    #     # return await agent_registry.get("document_agent").execute(state)
  
-    async def _validation_agent_node(self, state: InvoiceProcessingState) -> InvoiceProcessingState:
-        return await agent_registry.get("validation_agent").run(state)
+    # async def _validation_agent_node(self, state: InvoiceProcessingState) -> InvoiceProcessingState:
+    #     return await agent_registry.get("validation_agent").run(state)
  
-        # return await agent_registry.get("validation_agent").execute(state)
+    #     # return await agent_registry.get("validation_agent").execute(state)
  
-    async def _risk_agent_node(self, state: InvoiceProcessingState) -> InvoiceProcessingState:
-        return await agent_registry.get("risk_agent").run(state)
+    # async def _risk_agent_node(self, state: InvoiceProcessingState) -> InvoiceProcessingState:
+    #     return await agent_registry.get("risk_agent").run(state)
  
-        # return await agent_registry.get("risk_agent").execute(state)
+    #     # return await agent_registry.get("risk_agent").execute(state)
  
-    async def _payment_agent_node(self, state: InvoiceProcessingState) -> InvoiceProcessingState:
-        return await agent_registry.get("payment_agent").run(state)
+    # async def _payment_agent_node(self, state: InvoiceProcessingState) -> InvoiceProcessingState:
+    #     return await agent_registry.get("payment_agent").run(state)
  
-        # return await agent_registry.get("payment_agent").execute(state)
+    #     # return await agent_registry.get("payment_agent").execute(state)
  
-    async def _audit_agent_node(self, state: InvoiceProcessingState) -> InvoiceProcessingState:
-        return await agent_registry.get("audit_agent").run(state)
+    # async def _audit_agent_node(self, state: InvoiceProcessingState) -> InvoiceProcessingState:
+    #     return await agent_registry.get("audit_agent").run(state)
  
-        # return await agent_registry.get("audit_agent").execute(state)
+    #     # return await agent_registry.get("audit_agent").execute(state)
  
-    async def _escalation_agent_node(self, state: InvoiceProcessingState) -> InvoiceProcessingState:
-        return await agent_registry.get("escalation_agent").run(state)
+    # async def _escalation_agent_node(self, state: InvoiceProcessingState) -> InvoiceProcessingState:
+    #     return await agent_registry.get("escalation_agent").run(state)
  
-        # #return await agent_registry.get("escalation_agent").execute(state)
+    #     # #return await agent_registry.get("escalation_agent").execute(state)
  
-    async def _human_review_node(self, state: InvoiceProcessingState) -> InvoiceProcessingState:
-        return await human_review_node(state)
+    # async def _human_review_node(self, state: InvoiceProcessingState) -> InvoiceProcessingState:
+    #     return await human_review_node(state)
  
-    async def _end_node(self, state: InvoiceProcessingState) -> InvoiceProcessingState:
-        """No-op terminal node used for clean workflow termination."""
-        return state
- 
+    # async def _end_node(self, state: InvoiceProcessingState) -> InvoiceProcessingState:
+    #     """No-op terminal node used for clean workflow termination."""
+    #     return state
+
+    async def _document_agent_node(self, state: InvoiceProcessingState):
+        new_state = await agent_registry.get("document_agent").run(state)
+        return new_state.dict()
+
+    async def _validation_agent_node(self, state: InvoiceProcessingState):
+        new_state = await agent_registry.get("validation_agent").run(state)
+        return new_state.dict()
+
+    async def _risk_agent_node(self, state: InvoiceProcessingState):
+        new_state = await agent_registry.get("risk_agent").run(state)
+        return new_state.dict()
+
+    async def _payment_agent_node(self, state: InvoiceProcessingState):
+        new_state = await agent_registry.get("payment_agent").run(state)
+        return new_state.dict()
+
+    async def _audit_agent_node(self, state: InvoiceProcessingState):
+        new_state = await agent_registry.get("audit_agent").run(state)
+        return new_state.dict()
+
+    async def _escalation_agent_node(self, state: InvoiceProcessingState):
+        new_state = await agent_registry.get("escalation_agent").run(state)
+        return new_state.dict()
+
+    async def _human_review_node(self, state: InvoiceProcessingState):
+        new_state = await human_review_node(state)
+        return new_state.dict()
+
+    async def _end_node(self, state: InvoiceProcessingState):
+        return state.dict()
+
+
     # ----------------------------------------------------------------------
     # Conditional routing functions
     # ----------------------------------------------------------------------
@@ -610,7 +664,7 @@ class InvoiceProcessingGraph:
         # )
  
         result = await self.workflow_graph.ainvoke(
-            state,
+            state.dict(),
             config={
                 "configurable": {
                     "thread_id": process_id,
@@ -667,38 +721,42 @@ class InvoiceProcessingGraph:
     # Helper methods
     # ----------------------------------------------------------------------
  
-    def _extract_final_state(
-        self, result, initial_state: InvoiceProcessingState
-    ) -> InvoiceProcessingState:
-        """Ensure we always return a valid InvoiceProcessingState object."""
+    # def _extract_final_state(
+    #     self, result, initial_state: InvoiceProcessingState
+    # ) -> InvoiceProcessingState:
+    #     """Ensure we always return a valid InvoiceProcessingState object."""
  
-        # Handle LangGraph dict result
+    #     # Handle LangGraph dict result
+    #     if isinstance(result, dict):
+    #         try:
+    #             final_state = InvoiceProcessingState(**result)
+    #         except Exception as e:
+    #             self.logger.error(f"Failed to reconstruct state: {e}")
+    #             final_state = initial_state
+    #     else:
+    #         final_state = result or initial_state
+ 
+    #     # Ensure all attributes are valid
+    #     try:
+    #         if not getattr(final_state, "overall_status", None):
+    #             final_state.overall_status = ProcessingStatus.COMPLETED
+    #         final_state.updated_at = datetime.utcnow()
+    #     except Exception as e:
+    #         self.logger.error(f"Failed to finalize state: {e}")
+    #         # As a fallback, reconstruct if dict
+    #         if isinstance(final_state, dict):
+    #             final_state = InvoiceProcessingState(**final_state)
+    #             final_state.overall_status = ProcessingStatus.COMPLETED
+    #             final_state.updated_at = datetime.utcnow()
+ 
+    #     return final_state
+ 
+ 
+    def _extract_final_state(self, result, initial_state):
         if isinstance(result, dict):
-            try:
-                final_state = InvoiceProcessingState(**result)
-            except Exception as e:
-                self.logger.error(f"Failed to reconstruct state: {e}")
-                final_state = initial_state
-        else:
-            final_state = result or initial_state
- 
-        # Ensure all attributes are valid
-        try:
-            if not getattr(final_state, "overall_status", None):
-                final_state.overall_status = ProcessingStatus.COMPLETED
-            final_state.updated_at = datetime.utcnow()
-        except Exception as e:
-            self.logger.error(f"Failed to finalize state: {e}")
-            # As a fallback, reconstruct if dict
-            if isinstance(final_state, dict):
-                final_state = InvoiceProcessingState(**final_state)
-                final_state.overall_status = ProcessingStatus.COMPLETED
-                final_state.updated_at = datetime.utcnow()
- 
-        return final_state
- 
- 
- 
+            return InvoiceProcessingState(**result)
+        return initial_state
+
  
 # ----------------------------------------------------------------------
 # Factory function
