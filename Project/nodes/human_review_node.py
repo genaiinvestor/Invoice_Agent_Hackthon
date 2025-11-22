@@ -275,7 +275,7 @@ async def human_review_node(state: InvoiceProcessingState) -> InvoiceProcessingS
 
         # db.collection("pending_reviews").document(process_id).set(pending_doc)
 
-        db = state.db
+        db = state.config.get("db")
         pending_doc = {
             "process_id": process_id,
             "invoice_number": invoice_number,

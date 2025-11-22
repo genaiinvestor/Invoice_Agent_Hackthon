@@ -270,7 +270,7 @@ class InvoiceProcessingState(BaseModel):
  
   # ⭐ ADD THIS FOR FIRESTORE SUPPORT
     
-    db: Optional[Any] = None
+ 
     # Processing status
     overall_status: Optional[ProcessingStatus] = ProcessingStatus.PENDING
     current_agent: Optional[str] = None

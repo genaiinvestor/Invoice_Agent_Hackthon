@@ -331,7 +331,8 @@ class InvoiceProcessingGraph:
             config={
                 "configurable": {
                     "thread_id": process_id,
-                    "checkpoint_ns": f"invoice_ns_{process_id}"
+                    "checkpoint_ns": f"invoice_ns_{process_id}",
+                    "db": self.db
                 }
             }
         )
@@ -456,8 +457,12 @@ class InvoiceProcessingGraph:
         new_state = await agent_registry.get("escalation_agent").run(state)
         return new_state.dict()
 
-    async def _human_review_node(self, state: InvoiceProcessingState):
-        new_state = await human_review_node(state)
+    # async def _human_review_node(self, state: InvoiceProcessingState):
+    #     new_state = await human_review_node(state)
+    #     return new_state.dict()
+
+    async def _human_review_node(self, state: InvoiceProcessingState, *, config=None):
+        new_state = await human_review_node(state, config=config)
         return new_state.dict()
 
     async def _end_node(self, state: InvoiceProcessingState):
@@ -653,7 +658,7 @@ class InvoiceProcessingGraph:
             updated_at=datetime.utcnow()
         )
            # ✅ THEN assign Firestore client to state
-        state.db = self.db
+     
  
         self.logger.log_workflow_start(workflow_type, process_id, file=file_name)
  
@@ -668,7 +673,8 @@ class InvoiceProcessingGraph:
             config={
                 "configurable": {
                     "thread_id": process_id,
-                    "checkpoint_ns": f"invoice_ns_{process_id}"
+                    "checkpoint_ns": f"invoice_ns_{process_id}",
+                    "db": self.db 
                 }
             }
         )
