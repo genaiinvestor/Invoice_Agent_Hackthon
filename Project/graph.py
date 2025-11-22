@@ -244,20 +244,56 @@ class InvoiceProcessingGraph:
     #         self.logger.error(traceback.format_exc())
     #         raise
 
+    # async def resume(self, process_id: str, value: dict):
+    #     """
+    #     Proper LangGraph resume for human_review_node.
+    #     Wraps input in state.resume.value so interrupt can continue.
+    #     """
+
+    #     self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+
+    #     try:
+    #         # ⭐ THE REQUIRED WRAPPING FORMAT ⭐
+    #         wrapped_input = {
+    #             "resume": {
+    #                 "value": value
+    #             }
+    #         }
+
+    #         result = await self.workflow_graph.ainvoke(
+    #             input=wrapped_input,
+    #             config={
+    #                 "configurable": {
+    #                     "thread_id": process_id,
+    #                     "checkpoint_ns": f"invoice_ns_{process_id}"
+    #                 }
+    #             }
+    #         )
+
+    #         final_state = self._extract_final_state(result, None)
+    #         self.logger.info(f"[RESUME_COMPLETE] {process_id}")
+    #         return final_state
+
+    #     except Exception as e:
+    #         import traceback
+    #         self.logger.error(f"[RESUME_FAILED] {e}")
+    #         self.logger.error(traceback.format_exc())
+    #         raise
+
     async def resume(self, process_id: str, value: dict):
-        """
-        Proper LangGraph resume for human_review_node.
-        Wraps input in state.resume.value so interrupt can continue.
-        """
 
         self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
 
         try:
-            # ⭐ THE REQUIRED WRAPPING FORMAT ⭐
+            # ⭐ MUST include at least one real state key
             wrapped_input = {
-                "resume": {
-                    "value": value
-                }
+                "resume": { "value": value },
+
+                # REAL STATE UPDATE REQUIRED
+                "human_review_required": False,
+                "overall_status": "completed",
+                "current_agent": "human_review_node",
+                "updated_at": datetime.utcnow().isoformat()
             }
 
             result = await self.workflow_graph.ainvoke(
@@ -560,7 +596,8 @@ class InvoiceProcessingGraph:
             overall_status=ProcessingStatus.IN_PROGRESS,
             workflow_type=workflow_type,
             created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            updated_at=datetime.utcnow(),
+            state.db = self.db
         )
  
         self.logger.log_workflow_start(workflow_type, process_id, file=file_name)

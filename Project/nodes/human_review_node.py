@@ -214,13 +214,21 @@ async def human_review_node(state: InvoiceProcessingState) -> InvoiceProcessingS
     # ---------------------------------------------------------
     # 2️⃣ If workflow resumed (Approve/Reject) → use that
     # ---------------------------------------------------------
+    # resume_obj = getattr(state, "resume", None)
+    # if resume_obj and "value" in resume_obj:
+    #     review_input = resume_obj["value"]
+    #     logger.info(f"Resumed human review for {process_id}: {json.dumps(review_input)}")
+
+    # else:
+    #     review_input = None
     resume_obj = getattr(state, "resume", None)
-    if resume_obj and "value" in resume_obj:
+
+    if isinstance(resume_obj, dict) and resume_obj.get("value"):
         review_input = resume_obj["value"]
         logger.info(f"Resumed human review for {process_id}: {json.dumps(review_input)}")
-
     else:
         review_input = None
+
 
     # ---------------------------------------------------------
     # 3️⃣ Pause workflow & write pending review to Firestore
@@ -252,9 +260,22 @@ async def human_review_node(state: InvoiceProcessingState) -> InvoiceProcessingS
         #     }
         #     state.db.collection("pending_reviews").document(process_id).set(pending_doc)
         #     logger.info(f"Saved pending review request for process_id={process_id}")
-        from google.cloud import firestore
-        db = firestore.Client()
+        # from google.cloud import firestore
+        # db = firestore.Client()
 
+        # pending_doc = {
+        #     "process_id": process_id,
+        #     "invoice_number": invoice_number,
+        #     "priority": priority,
+        #     "approver": approver,
+        #     "escalation_id": escalation.get("escalation_id"),
+        #     "status": "PENDING_REVIEW",
+        #     "created_at": datetime.now(UTC).isoformat(),
+        # }
+
+        # db.collection("pending_reviews").document(process_id).set(pending_doc)
+
+        db = state.db
         pending_doc = {
             "process_id": process_id,
             "invoice_number": invoice_number,
@@ -264,8 +285,8 @@ async def human_review_node(state: InvoiceProcessingState) -> InvoiceProcessingS
             "status": "PENDING_REVIEW",
             "created_at": datetime.now(UTC).isoformat(),
         }
-
         db.collection("pending_reviews").document(process_id).set(pending_doc)
+
         logger.info(f"Saved pending review request for process_id={process_id}")
 
         # ---- Finish pause ----

@@ -40,7 +40,8 @@ def create_fastapi_app(workflow, db):
         return {
             "ok": True,
             "process_id": req.process_id,
-            "payment_status": result_state.payment_decision.payment_status.name,
+            "payment_status" = result_state.payment_decision.get("payment_status")
+            # "payment_status": result_state.payment_decision.payment_status.name,
             "overall_status": result_state.overall_status.name
         }
 
