@@ -596,9 +596,10 @@ class InvoiceProcessingGraph:
             overall_status=ProcessingStatus.IN_PROGRESS,
             workflow_type=workflow_type,
             created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
-            state.db = self.db
+            updated_at=datetime.utcnow()
         )
+           # ✅ THEN assign Firestore client to state
+        state.db = self.db
  
         self.logger.log_workflow_start(workflow_type, process_id, file=file_name)
  
