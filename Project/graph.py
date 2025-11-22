@@ -216,22 +216,58 @@ class InvoiceProcessingGraph:
     #         self.logger.error(traceback.format_exc())
     #         raise
  
+    # async def resume(self, process_id: str, value: dict):
+    #     """
+    #     Correct: resumes the paused workflow at human_review_node
+    #     """
+    #     self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+
+    #     try:
+    #         result = await self.workflow_graph.ainvoke(
+    #         input=value,
+    #         config={
+    #             "configurable": {
+    #                 "thread_id": process_id,
+    #                 "checkpoint_ns": f"invoice_ns_{process_id}",
+    #                 "resume": value
+    #             }
+    #         },
+    #         )
+
+    #         final_state = self._extract_final_state(result, None)
+    #         self.logger.info(f"[RESUME_COMPLETE] {process_id}")
+    #         return final_state
+
+    #     except Exception as e:
+    #         import traceback
+    #         self.logger.error(f"[RESUME_FAILED] {e}")
+    #         self.logger.error(traceback.format_exc())
+    #         raise
+
     async def resume(self, process_id: str, value: dict):
         """
-        Correct: resumes the paused workflow at human_review_node
+        Proper LangGraph resume for human_review_node.
+        Wraps input in state.resume.value so interrupt can continue.
         """
+
         self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
 
         try:
-            result = await self.workflow_graph.ainvoke(
-            input=value,
-            config={
-                "configurable": {
-                    "thread_id": process_id,
-                    "checkpoint_ns": f"invoice_ns_{process_id}",
-                    "resume": value
+            # ⭐ THE REQUIRED WRAPPING FORMAT ⭐
+            wrapped_input = {
+                "resume": {
+                    "value": value
                 }
-            },
+            }
+
+            result = await self.workflow_graph.ainvoke(
+                input=wrapped_input,
+                config={
+                    "configurable": {
+                        "thread_id": process_id,
+                        "checkpoint_ns": f"invoice_ns_{process_id}"
+                    }
+                }
             )
 
             final_state = self._extract_final_state(result, None)
