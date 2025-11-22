@@ -190,7 +190,7 @@ except:
     interrupt = None
 
 
-async def human_review_node(state: InvoiceProcessingState) -> InvoiceProcessingState:
+async def human_review_node(state: InvoiceProcessingState, *, config=None) -> InvoiceProcessingState:
     """Handles manual approval/rejection after escalation (HITL step)."""
 
     logger = StructuredLogger("HumanReviewNode")
