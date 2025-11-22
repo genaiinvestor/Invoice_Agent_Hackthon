@@ -375,7 +375,11 @@ class InvoiceProcessingGraph:
             "resume": {"value": value},
 
             # ⭐ REQUIRED REAL STATE KEYS ⭐
+            "process_id": process_id,
+            "file_name": f"resumed_{process_id}.pdf",   # REQUIRED
             "current_agent": "human_review_node",
+            "human_review_required": False,
+            "overall_status": "in_progress",
             "updated_at": datetime.utcnow().isoformat()
         }
 
@@ -391,6 +395,7 @@ class InvoiceProcessingGraph:
         )
 
         return self._extract_final_state(result, None)
+
 
     # ----------------------------------------------------------------------
     # Graph Creation
