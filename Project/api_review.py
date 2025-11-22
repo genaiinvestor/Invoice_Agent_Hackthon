@@ -35,12 +35,28 @@ def create_fastapi_app(workflow, db):
             process_id=req.process_id,
             value=review_input
         )
+        pd = result_state.payment_decision or {}
+        payment_status = pd.get("payment_status", "UNKNOWN")
+
+        overall_status = (
+            result_state.overall_status.name
+            if hasattr(result_state.overall_status, "name")
+            else str(result_state.overall_status)
+        )
+
         return {
             "ok": True,
             "process_id": req.process_id,
-            "payment_status": result_state.payment_decision.get("payment_status"),
-            "overall_status": result_state.overall_status.name
+            "payment_status": payment_status,
+            "overall_status": overall_status
         }
+
+        # return {
+        #     "ok": True,
+        #     "process_id": req.process_id,
+        #     "payment_status": result_state.payment_decision.get("payment_status"),
+        #     "overall_status": result_state.overall_status.name
+        # }
         # return {
         #     "ok": True,
         #     "process_id": req.process_id,

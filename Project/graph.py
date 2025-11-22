@@ -368,19 +368,60 @@ class InvoiceProcessingGraph:
 
     #     return self._extract_final_state(result, None)
 
+    # async def resume(self, process_id: str, value: dict):
+    #     self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+
+    #     wrapped_input = {
+    #         "resume": {"value": value},
+
+    #         # ⭐ REQUIRED REAL STATE KEYS ⭐
+    #         "process_id": process_id,
+    #         "file_name": f"resumed_{process_id}.pdf",   # REQUIRED
+    #         "current_agent": "human_review",
+    #         "human_review_required": False,
+    #         "overall_status": "in_progress",
+    #         "updated_at": datetime.utcnow().isoformat()
+    #     }
+
+    #     result = await self.workflow_graph.ainvoke(
+    #         wrapped_input,
+    #         config={
+    #             "configurable": {
+    #                 "thread_id": process_id,
+    #                 "checkpoint_ns": f"invoice_ns_{process_id}",
+    #                 "db": self.db
+    #             }
+    #         }
+    #     )
+
+    #     return self._extract_final_state(result, None)
     async def resume(self, process_id: str, value: dict):
         self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+
+        decision = value.get("decision", "").lower()
 
         wrapped_input = {
             "resume": {"value": value},
 
-            # ⭐ REQUIRED REAL STATE KEYS ⭐
+            # REQUIRED STATE KEYS
             "process_id": process_id,
-            "file_name": f"resumed_{process_id}.pdf",   # REQUIRED
+            "file_name": f"resumed_{process_id}.pdf",
             "current_agent": "human_review",
             "human_review_required": False,
-            "overall_status": "in_progress",
-            "updated_at": datetime.utcnow().isoformat()
+            "overall_status": "completed",
+            "updated_at": datetime.utcnow().isoformat(),
+
+            # ⭐ ADD PAYMENT DECISION HERE ⭐
+            "payment_decision": {
+                "payment_status": "APPROVED" if decision == "approved" else "REJECTED",
+                "approved_amount": 0,
+                "transaction_id": None,
+                "payment_method": "manual_review",
+                "rejection_reason": None if decision == "approved" else "Rejected by reviewer",
+                "reviewed_by": value.get("reviewer"),
+                "review_comments": value.get("comments"),
+                "timestamp": datetime.utcnow().isoformat()
+            }
         }
 
         result = await self.workflow_graph.ainvoke(
@@ -395,7 +436,6 @@ class InvoiceProcessingGraph:
         )
 
         return self._extract_final_state(result, None)
-
 
     # ----------------------------------------------------------------------
     # Graph Creation
