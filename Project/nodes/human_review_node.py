@@ -276,11 +276,12 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
         # db.collection("pending_reviews").document(process_id).set(pending_doc)
 
         # db = state.config.get("db")
-        db = None
-        if config and "db" in config:
-            db = config["db"]
-        elif hasattr(state, "db"):
-            db = state.db
+        # db = None
+        # if config and "db" in config:
+        #     db = config["db"]
+        # elif hasattr(state, "db"):
+        #     db = state.db
+        db = config.get("db") if config else None
 
         pending_doc = {
             "process_id": process_id,

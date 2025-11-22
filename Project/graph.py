@@ -316,26 +316,45 @@ class InvoiceProcessingGraph:
     #         self.logger.error(traceback.format_exc())
     #         raise
 
+    # async def resume(self, process_id: str, value: dict):
+    #     self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+    #     # wrapped_input = {
+    #     #     "resume": {"value": value},
+    #     #     "human_review_required": False,
+    #     #     "file_name": f"resumed_{process_id}.pdf", 
+    #     #     "current_agent": "human_review_node",
+    #     #     "updated_at": datetime.utcnow().isoformat(),
+    #     #     "overall_status": "completed"
+    #     # }
+
+    #     wrapped_input = {
+    #         "resume": {"value": value},
+    #         "process_id": process_id,
+    #         "file_name": f"resumed_{process_id}.pdf",   # ⭐ REQUIRED ⭐
+    #         "human_review_required": False,
+    #         "current_agent": "human_review_node",
+    #         "updated_at": datetime.utcnow().isoformat(),
+    #         "overall_status": "completed"
+    #     }
+    #     result = await self.workflow_graph.ainvoke(
+    #         wrapped_input,
+    #         config={
+    #             "configurable": {
+    #                 "thread_id": process_id,
+    #                 "checkpoint_ns": f"invoice_ns_{process_id}",
+    #                 "db": self.db
+    #             }
+    #         }
+    #     )
+
+    #     return self._extract_final_state(result, None)
     async def resume(self, process_id: str, value: dict):
         self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
-        # wrapped_input = {
-        #     "resume": {"value": value},
-        #     "human_review_required": False,
-        #     "file_name": f"resumed_{process_id}.pdf", 
-        #     "current_agent": "human_review_node",
-        #     "updated_at": datetime.utcnow().isoformat(),
-        #     "overall_status": "completed"
-        # }
 
         wrapped_input = {
-            "resume": {"value": value},
-            "process_id": process_id,
-            "file_name": f"resumed_{process_id}.pdf",   # ⭐ REQUIRED ⭐
-            "human_review_required": False,
-            "current_agent": "human_review_node",
-            "updated_at": datetime.utcnow().isoformat(),
-            "overall_status": "completed"
+            "resume": {"value": value}
         }
+
         result = await self.workflow_graph.ainvoke(
             wrapped_input,
             config={
