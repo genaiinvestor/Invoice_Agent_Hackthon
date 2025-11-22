@@ -403,15 +403,14 @@ class InvoiceProcessingGraph:
         wrapped_input = {
             "resume": {"value": value},
 
-            # REQUIRED STATE KEYS
+            # REQUIRED
             "process_id": process_id,
-            "file_name": f"resumed_{process_id}.pdf",
-            "current_agent": "human_review",
+            "current_agent": "human_review_node",   # FIXED
             "human_review_required": False,
-            "overall_status": "completed",
             "updated_at": datetime.utcnow().isoformat(),
 
-            # ⭐ ADD PAYMENT DECISION HERE ⭐
+            # DO NOT CHANGE FILE NAME, DO NOT Mark completed!!!
+            # ADD PAYMENT DECISION ONLY
             "payment_decision": {
                 "payment_status": "APPROVED" if decision == "approved" else "REJECTED",
                 "approved_amount": 0,
@@ -436,6 +435,7 @@ class InvoiceProcessingGraph:
         )
 
         return self._extract_final_state(result, None)
+
 
     # ----------------------------------------------------------------------
     # Graph Creation
