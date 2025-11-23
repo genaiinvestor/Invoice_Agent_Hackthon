@@ -111,7 +111,11 @@ from fastapi import FastAPI
 # api = FastAPI()
 
 # Create ONE workflow instance
-shared_workflow = get_workflow({})
+# shared_workflow = get_workflow({})
+if "shared_workflow" not in st.session_state:
+    st.session_state.shared_workflow = get_workflow({})
+shared_workflow = st.session_state.shared_workflow
+
 db = firestore.Client()
 
 from api_review import create_fastapi_app
