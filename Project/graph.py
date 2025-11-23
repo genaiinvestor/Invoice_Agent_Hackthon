@@ -344,7 +344,7 @@ class InvoiceProcessingGraph:
         return new_state
 
     async def _end_node(self, state: InvoiceProcessingState):
-        return state.dict()
+        return state
 
 
     # ----------------------------------------------------------------------
