@@ -268,7 +268,7 @@ class InvoiceProcessingState(BaseModel):
     process_id: Optional[str] = Field(default_factory=lambda: f"proc_{uuid4().hex[:8]}")
     file_name: str
     resume: Optional[dict] = None
-    __resume__: Optional[dict] = None
+   
 
  
   # ⭐ ADD THIS FOR FIRESTORE SUPPORT
