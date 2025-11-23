@@ -147,57 +147,78 @@ class InvoiceProcessingGraph:
         agent_registry.register(EscalationAgent())
  
 
+    # async def resume(self, process_id: str, value: dict):
+    #     self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+
+    #     prev = await self.compiled_graph.checkpointer.aget(
+    #         {
+    #             "configurable": {
+    #                 "thread_id": process_id,
+    #                 "checkpoint_ns": "invoice_workflow",
+    #             }
+    #         }
+    #     )
+
+
+    #     if not prev or "state" not in prev:
+    #         raise ValueError(f"No saved state found for process_id={process_id}")
+
+    #     prev_state = prev["state"]["values"]  
+
+    #     # Merge updated values
+    #     merged_state = {
+    #         **prev_state,
+    #         "resume": {"value": value},
+    #         "human_review_required": False,
+    #         "current_agent": "human_review_node",
+    #         "overall_status": "in_progress",
+    #         "updated_at": datetime.utcnow().isoformat()
+    #     }
+
+    #     # Continue workflow
+    #     result = await self.workflow_graph.ainvoke(
+    #         merged_state,
+    #         config={
+    #             "configurable": {
+    #                 "thread_id": process_id,
+    #                 "checkpoint_ns": "invoice_workflow",
+    #                 "db": self.db
+    #             }
+    #         }
+    #     )
+
+    #     return self._extract_final_state(result, None)
 
     async def resume(self, process_id: str, value: dict):
         self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
 
-        # Load previous state using correct API
-        # prev = await self.memory.aget(
-        #     {
-        #         "configurable": {
-        #             "thread_id": process_id,
-        #             "checkpoint_ns": "invoice_workflow"
-        #         }
-        #     }
-        # )
-        prev = await self.compiled_graph.checkpointer.aget(
-            {
-                "configurable": {
-                    "thread_id": process_id,
-                    "checkpoint_ns": "invoice_workflow",
-                }
-            }
+        # Load checkpoint
+        checkpoint = await self.compiled_graph.checkpointer.aget(
+            {"configurable": {
+                "thread_id": process_id,
+                "checkpoint_ns": "invoice_workflow"
+            }}
         )
 
-
-        if not prev or "state" not in prev:
+        if not checkpoint:
             raise ValueError(f"No saved state found for process_id={process_id}")
 
-        prev_state = prev["state"]["values"]  
+        saved_state = checkpoint["state"]["values"]
 
-        # Merge updated values
-        merged_state = {
-            **prev_state,
-            "resume": {"value": value},
-            "human_review_required": False,
-            "current_agent": "human_review_node",
-            "overall_status": "in_progress",
-            "updated_at": datetime.utcnow().isoformat()
-        }
+        saved_state["resume"] = {"value": value}
+        saved_state["human_review_required"] = False
 
-        # Continue workflow
         result = await self.workflow_graph.ainvoke(
-            merged_state,
-            config={
-                "configurable": {
-                    "thread_id": process_id,
-                    "checkpoint_ns": "invoice_workflow",
-                    "db": self.db
-                }
-            }
+            saved_state,
+            config={"configurable": {
+                "thread_id": process_id,
+                "checkpoint_ns": "invoice_workflow",
+                "db": self.db
+            }}
         )
 
         return self._extract_final_state(result, None)
+
 
     # ----------------------------------------------------------------------
     # Graph Creation
