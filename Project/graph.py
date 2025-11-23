@@ -653,42 +653,8 @@ class InvoiceProcessingGraph:
             return InvoiceProcessingState(**result)
         return initial_state
 
- 
-# ----------------------------------------------------------------------
-# Factory function
-# ----------------------------------------------------------------------
-# invoice_workflow = None
- 
- 
-# def get_workflow(config: Dict[str, Any] = None) -> InvoiceProcessingGraph:
-#     """Factory getter to create a singleton workflow instance."""
-#     global invoice_workflow
-#     if not invoice_workflow:
-#         invoice_workflow = InvoiceProcessingGraph(config)
-#     return invoice_workflow
 
-# Global singleton workflow instance
-# invoice_workflow = None
 
-# def get_workflow(config: Dict[str, Any] = None):
-#     """Returns a singleton InvoiceProcessingGraph with Firestore-injected initial state."""
-#     global invoice_workflow
-
-#     if invoice_workflow is None:
-#         db = firestore.Client()
-
-#         # ⭐ Create the workflow instance exactly as before
-#         invoice_workflow = InvoiceProcessingGraph(config)
-
-#         # ⭐ Inject Firestore client into the DEFAULT initial state template
-#         # So every new process_invoice() call will inherit state.db
-#         invoice_workflow.initial_state = InvoiceProcessingState(
-#             db=db
-#         )
-
-#     return invoice_workflow
-
-# graph.py
 from google.cloud import firestore
 
 _invoice_workflow_singleton = None

@@ -119,8 +119,8 @@ shared_workflow = st.session_state.shared_workflow
 db = firestore.Client()
 
 from api_review import create_fastapi_app
-api = create_fastapi_app(shared_workflow, db)
-
+# api = create_fastapi_app(shared_workflow, db)
+api = create_fastapi_app(st.session_state.shared_workflow, db)
 
 
 class InvoiceProcessingApp:
