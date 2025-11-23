@@ -552,20 +552,58 @@ class InvoiceProcessingGraph:
     #     return self._extract_final_state(result, None)
 
 
+    # async def resume(self, process_id: str, value: dict):
+    #     self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+
+    #     # 1️⃣ Load previous state
+    #     prev = await self.memory.aget_state(
+    #         {"configurable": {"thread_id": process_id, "checkpoint_ns": "invoice_workflow"}}
+    #     )
+        
+    #     if not prev:
+    #         raise ValueError(f"No state found for {process_id}")
+
+    #     prev_state = prev["state"]  # dict
+
+    #     # 2️⃣ Merge state
+    #     merged = {
+    #         **prev_state,
+    #         "resume": {"value": value},
+    #         "human_review_required": False,
+    #         "current_agent": "human_review",
+    #         "overall_status": "in_progress",
+    #         "updated_at": datetime.utcnow().isoformat()
+    #     }
+
+    #     # 3️⃣ Continue graph
+    #     result = await self.workflow_graph.ainvoke(
+    #         merged,
+    #         config={"configurable": {
+    #             "thread_id": process_id,
+    #             "checkpoint_ns": "invoice_workflow",
+    #             "db": self.db
+    #         }}
+    #     )
+
+    #     return self._extract_final_state(result, None)
+
     async def resume(self, process_id: str, value: dict):
         self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
 
-        # 1️⃣ Load previous state
-        prev = await self.memory.aget_state(
-            {"configurable": {"thread_id": process_id, "checkpoint_ns": "invoice_workflow"}}
+        # 1️⃣ Load previous saved state
+        prev = await self.memory.aget_checkpoint(
+            {"configurable": {
+                "thread_id": process_id,
+                "checkpoint_ns": "invoice_workflow"
+            }}
         )
-        
+
         if not prev:
             raise ValueError(f"No state found for {process_id}")
 
-        prev_state = prev["state"]  # dict
+        prev_state = prev["state"]
 
-        # 2️⃣ Merge state
+        # 2️⃣ Merge updated values
         merged = {
             **prev_state,
             "resume": {"value": value},
@@ -575,7 +613,7 @@ class InvoiceProcessingGraph:
             "updated_at": datetime.utcnow().isoformat()
         }
 
-        # 3️⃣ Continue graph
+        # 3️⃣ Continue workflow
         result = await self.workflow_graph.ainvoke(
             merged,
             config={"configurable": {
