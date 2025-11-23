@@ -436,25 +436,63 @@ class InvoiceProcessingGraph:
 
     #     return self._extract_final_state(result, None)
 
+    # async def resume(self, process_id: str, value: dict):
+    #     self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+
+    #     decision = value.get("decision", "").lower()
+
+    #     wrapped_input = {
+    #         "__resume__": {  # ⭐ IMPORTANT ⭐
+    #             "value": value
+    #         },
+
+    #         # REQUIRED STATE FIELDS
+    #         "process_id": process_id,
+    #         "file_name": None,               # ⭐ DO NOT send fake filename
+    #         "current_agent": "human_review",
+    #         "human_review_required": False,
+    #         "overall_status": "in_progress",
+    #         "updated_at": datetime.utcnow().isoformat(),
+
+    #         # ⭐ Payment decision from reviewer
+    #         "payment_decision": {
+    #             "payment_status": "APPROVED" if decision == "approved" else "REJECTED",
+    #             "approved_amount": 0,
+    #             "transaction_id": None,
+    #             "payment_method": "manual_review",
+    #             "rejection_reason": None if decision == "approved" else "Rejected by reviewer",
+    #             "reviewed_by": value.get("reviewer"),
+    #             "review_comments": value.get("comments"),
+    #             "timestamp": datetime.utcnow().isoformat()
+    #         }
+    #     }
+
+    #     result = await self.workflow_graph.ainvoke(
+    #         wrapped_input,
+    #         config={
+    #             "configurable": {
+    #                 "thread_id": process_id,
+    #                 "checkpoint_ns": f"invoice_ns_{process_id}",
+    #                 "db": self.db
+    #             }
+    #         }
+    #     )
+
+    #     return self._extract_final_state(result, None)
+
     async def resume(self, process_id: str, value: dict):
         self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
 
+        # 1️⃣ Load previous complete state
+        prev_state = await self.workflow_graph.aget_state(process_id)
+
+        if not prev_state:
+            raise ValueError(f"No state found for process {process_id}. Cannot resume workflow.")
+
         decision = value.get("decision", "").lower()
 
-        wrapped_input = {
-            "__resume__": {  # ⭐ IMPORTANT ⭐
-                "value": value
-            },
-
-            # REQUIRED STATE FIELDS
-            "process_id": process_id,
-            "file_name": None,               # ⭐ DO NOT send fake filename
-            "current_agent": "human_review",
-            "human_review_required": False,
-            "overall_status": "in_progress",
-            "updated_at": datetime.utcnow().isoformat(),
-
-            # ⭐ Payment decision from reviewer
+        # 2️⃣ Build reviewer decision update
+        reviewer_update = {
             "payment_decision": {
                 "payment_status": "APPROVED" if decision == "approved" else "REJECTED",
                 "approved_amount": 0,
@@ -467,8 +505,20 @@ class InvoiceProcessingGraph:
             }
         }
 
+        # 3️⃣ Merge previous state + resume input + reviewer update
+        merged_state = {
+            **prev_state,                    # keep all fields (file_name, invoice_url, extracted_data, etc.)
+            "__resume__": { "value": value },
+            "current_agent": "human_review",
+            "human_review_required": False,
+            "overall_status": "in_progress",
+            **reviewer_update,
+            "updated_at": datetime.utcnow().isoformat()
+        }
+
+        # 4️⃣ Resume workflow with merged state
         result = await self.workflow_graph.ainvoke(
-            wrapped_input,
+            merged_state,
             config={
                 "configurable": {
                     "thread_id": process_id,
