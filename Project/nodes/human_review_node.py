@@ -301,6 +301,87 @@
 
 #     return state
 #     # return state.dict()
+# import json
+# from datetime import datetime, timezone
+
+# from state import InvoiceProcessingState, ProcessingStatus, PaymentStatus
+# from utils.logger import StructuredLogger
+
+# UTC = timezone.utc
+
+# async def human_review_node(state: InvoiceProcessingState, config=None) -> InvoiceProcessingState:
+#     logger = StructuredLogger("HumanReviewNode")
+#     state.current_agent = "human_review_node"
+#     state.overall_status = ProcessingStatus.IN_PROGRESS
+
+#     if not state.escalation_record:
+#         logger.info("No escalation record — skipping.")
+#         state.overall_status = ProcessingStatus.COMPLETED
+#         return state
+
+#     escalation = state.escalation_record
+#     approver = escalation.get("approver", {}).get("name", "Finance Manager")
+#     priority = escalation.get("priority", "medium")
+#     invoice_number = escalation.get("invoice_number", "N/A")
+#     process_id = state.process_id
+
+#     resume_obj = state.resume
+#     if resume_obj and resume_obj.get("value"):
+#         review_input = resume_obj["value"]
+#         logger.info(f"Resumed human review for {process_id}: {json.dumps(review_input)}")
+#     else:
+#         review_input = None
+
+#     if not review_input:
+#         db = config.get("db") if config else None
+
+#         pending_doc = {
+#             "process_id": process_id,
+#             "invoice_number": invoice_number,
+#             "priority": priority,
+#             "approver": approver,
+#             "escalation_id": escalation.get("escalation_id"),
+#             "status": "PENDING_REVIEW",
+#             "created_at": datetime.now(UTC).isoformat(),
+#         }
+
+#         db.collection("pending_reviews").document(process_id).set(pending_doc)
+#         logger.info(f"Saved pending review for process_id={process_id}")
+
+#         state.overall_status = ProcessingStatus.PAUSED
+#         state.human_review_required = True
+
+#         return state   # ✔ FIXED: no dict, no __pause__
+
+#     # ---------------- Final decision ----------------
+#     decision = review_input.get("decision", "approved").lower()
+#     reviewer = review_input.get("reviewer", approver)
+#     comments = review_input.get("comments", "")
+
+#     payment_status = PaymentStatus.APPROVED if decision == "approved" else PaymentStatus.REJECTED
+
+#     state.payment_decision = {
+#         "payment_status": payment_status.name,
+#         "approved_amount": getattr(state.invoice_data, "total", 0.0),
+#         "method": "MANUAL_REVIEW",
+#         "reviewed_by": reviewer,
+#         "review_comments": comments,
+#     }
+
+#     logger.info(f"HumanReviewNode Final Decision: {json.dumps(state.payment_decision, indent=2)}")
+
+#     state.log_action(
+#         agent_name="human_review_node",
+#         action="manual_review",
+#         status="completed",
+#         details=state.payment_decision,
+#         duration_ms=300,
+#     )
+
+#     state.overall_status = ProcessingStatus.COMPLETED
+#     state.human_review_required = False
+
+#     return state
 import json
 from datetime import datetime, timezone
 
@@ -332,6 +413,9 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
     else:
         review_input = None
 
+    # ---------------------------------------------------------------------
+    # ⭐ PAUSE BRANCH — MANDATORY FOR CHECKPOINT SAVING
+    # ---------------------------------------------------------------------
     if not review_input:
         db = config.get("db") if config else None
 
@@ -351,9 +435,15 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
         state.overall_status = ProcessingStatus.PAUSED
         state.human_review_required = True
 
-        return state   # ✔ FIXED: no dict, no __pause__
+        # ⭐ Required for LangGraph to save checkpoint
+        return {
+            "__pause__": True,
+            "state": state.dict()
+        }
 
-    # ---------------- Final decision ----------------
+    # ---------------------------------------------------------------------
+    # ⭐ FINAL DECISION BRANCH
+    # ---------------------------------------------------------------------
     decision = review_input.get("decision", "approved").lower()
     reviewer = review_input.get("reviewer", approver)
     comments = review_input.get("comments", "")

@@ -131,7 +131,7 @@ class InvoiceProcessingApp:
         setup_logging()
         self.logger = get_logger("StreamlitApp")
         self.initialize_session_state()
-        self.initialize_workflow()
+        # self.initialize_workflow()
 
     # ---------------------------------------------------------------------- #
     # Initialization
@@ -141,18 +141,18 @@ class InvoiceProcessingApp:
             st.session_state.results = []
         if "last_run" not in st.session_state:
             st.session_state.last_run = None
-        if "workflow" not in st.session_state:
-            st.session_state.workflow = None
+        # if "workflow" not in st.session_state:
+        #     st.session_state.workflow = None
         if "running" not in st.session_state:
             st.session_state.running = False
         if "workflow_initialized" not in st.session_state:
             st.session_state.workflow_initialized = False
 
-    def initialize_workflow(self):
-        if st.session_state.workflow is None:
-            st.session_state.workflow = shared_workflow
-            st.session_state.workflow_initialized = True
-            self.logger.info("Workflow initialized successfully.")
+    # def initialize_workflow(self):
+    #     if st.session_state.workflow is None:
+    #         # st.session_state.workflow = shared_workflow
+    #         st.session_state.workflow_initialized = True
+    #         self.logger.info("Workflow initialized successfully.")
 
     # ---------------------------------------------------------------------- #
     # Header
@@ -194,8 +194,10 @@ class InvoiceProcessingApp:
             unsafe_allow_html=True
         )
 
-        if st.session_state.workflow_initialized:
-            st.success("✅ AI agents and workflow initialized successfully!")
+        # if st.session_state.workflow_initialized:
+        #     st.success("✅ AI agents and workflow initialized successfully!")
+        st.success("Workflow is ready — shared singleton initialized.")
+
 
     # ---------------------------------------------------------------------- #
     # Sidebar
@@ -263,7 +265,9 @@ class InvoiceProcessingApp:
     
 
     async def process_invoices_async(self, selected_files, workflow_type, max_concurrent):
-        workflow = st.session_state.workflow
+        # workflow = st.session_state.workflow
+        workflow = shared_workflow
+
         sem = asyncio.Semaphore(max_concurrent)
         results, progress = [], st.progress(0.0)
 
