@@ -655,16 +655,4 @@ class InvoiceProcessingGraph:
 
 
 
-from google.cloud import firestore
 
-_invoice_workflow_singleton = None
-
-def get_workflow(config=None):
-    global _invoice_workflow_singleton
-
-    if _invoice_workflow_singleton is None:
-        db = firestore.Client()
-        print("⚡ Creating REAL singleton InvoiceProcessingGraph")
-        _invoice_workflow_singleton = InvoiceProcessingGraph(config, db=db)
-
-    return _invoice_workflow_singleton
