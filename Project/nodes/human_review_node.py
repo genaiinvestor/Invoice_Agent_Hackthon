@@ -235,54 +235,47 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
     # ---------------------------------------------------------
     # 3️⃣ Pause workflow & write pending review to Firestore
     # ---------------------------------------------------------
+    # if not review_input:
+
+    #     # ---- Try interrupt() if available (local testing) ----
+    #     if interrupt:
+    #         try:
+    #             logger.info("⏸️ interrupt() available — pausing workflow")
+    #             review_input = await interrupt({
+    #                 "prompt": f"Manual review required for invoice {invoice_number}, priority={priority}"
+    #             })
+    #         except RuntimeError:
+    #             pass  # fall through to Firestore pause
+
+    #     # ---- ALWAYS save pending review to Firestore ----
+    #     logger.warning("Pausing for manual human review (Firestore).")
+
+       
+    #     db = config.get("db") if config else None
+
+    #     pending_doc = {
+    #         "process_id": process_id,
+    #         "invoice_number": invoice_number,
+    #         "priority": priority,
+    #         "approver": approver,
+    #         "escalation_id": escalation.get("escalation_id"),
+    #         "status": "PENDING_REVIEW",
+    #         "created_at": datetime.now(UTC).isoformat(),
+    #     }
+    #     db.collection("pending_reviews").document(process_id).set(pending_doc)
+
+    #     logger.info(f"Saved pending review request for process_id={process_id}")
+
+    #     # ---- Finish pause ----
+    #     state.overall_status = ProcessingStatus.PAUSED
+    #     state.human_review_required = True
+    #     return state
+    from langgraph.errors import Interrupt
+
     if not review_input:
 
-        # ---- Try interrupt() if available (local testing) ----
-        if interrupt:
-            try:
-                logger.info("⏸️ interrupt() available — pausing workflow")
-                review_input = await interrupt({
-                    "prompt": f"Manual review required for invoice {invoice_number}, priority={priority}"
-                })
-            except RuntimeError:
-                pass  # fall through to Firestore pause
-
-        # ---- ALWAYS save pending review to Firestore ----
         logger.warning("Pausing for manual human review (Firestore).")
 
-        # if state.db:
-        #     pending_doc = {
-        #         "process_id": process_id,
-        #         "invoice_number": invoice_number,
-        #         "priority": priority,
-        #         "approver": approver,
-        #         "escalation_id": escalation.get("escalation_id"),
-        #         "status": "PENDING_REVIEW",
-        #         "created_at": datetime.now(UTC).isoformat(),
-        #     }
-        #     state.db.collection("pending_reviews").document(process_id).set(pending_doc)
-        #     logger.info(f"Saved pending review request for process_id={process_id}")
-        # from google.cloud import firestore
-        # db = firestore.Client()
-
-        # pending_doc = {
-        #     "process_id": process_id,
-        #     "invoice_number": invoice_number,
-        #     "priority": priority,
-        #     "approver": approver,
-        #     "escalation_id": escalation.get("escalation_id"),
-        #     "status": "PENDING_REVIEW",
-        #     "created_at": datetime.now(UTC).isoformat(),
-        # }
-
-        # db.collection("pending_reviews").document(process_id).set(pending_doc)
-
-        # db = state.config.get("db")
-        # db = None
-        # if config and "db" in config:
-        #     db = config["db"]
-        # elif hasattr(state, "db"):
-        #     db = state.db
         db = config.get("db") if config else None
 
         pending_doc = {
@@ -294,15 +287,16 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
             "status": "PENDING_REVIEW",
             "created_at": datetime.now(UTC).isoformat(),
         }
-        db.collection("pending_reviews").document(process_id).set(pending_doc)
 
+        db.collection("pending_reviews").document(process_id).set(pending_doc)
         logger.info(f"Saved pending review request for process_id={process_id}")
 
-        # ---- Finish pause ----
+        # Mark state paused
         state.overall_status = ProcessingStatus.PAUSED
         state.human_review_required = True
-        return state
 
+        # ⭐ CRITICAL FIX: Save checkpoint + pause
+        raise Interrupt(state=state.dict())
     # ---------------------------------------------------------
     # 4️⃣ Process APPROVE / REJECT decision
     # ---------------------------------------------------------
