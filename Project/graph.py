@@ -516,36 +516,76 @@ class InvoiceProcessingGraph:
 
     #     return self._extract_final_state(result, None)
 
+    # async def resume(self, process_id: str, value: dict):
+    #     self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+
+    #     # prev_state = await self.workflow_graph.aget_state(
+    #     #     config={"configurable": {
+    #     #         "thread_id": process_id,
+    #     #         "checkpoint_ns": "invoice_workflow"
+    #     #     }}
+    #     # )
+    #     prev = await self.memory.aget_state(
+    #         {"configurable": {"thread_id": process_id, "checkpoint_ns": "invoice_workflow"}}
+    #     )
+
+    #     prev_state = prev["state"] if prev else None
+
+    #     if prev_state is None:
+    #         raise ValueError(f"No state found for {process_id}")
+
+    #     merged_state = {
+    #         **prev_state,
+    #         "resume": {"value": value},
+    #         "human_review_required": False,
+    #         "current_agent": "human_review_node",
+    #     }
+
+    #     result = await self.workflow_graph.ainvoke(
+    #         merged_state,
+    #         config={"configurable": {
+    #             "thread_id": process_id,
+    #             "checkpoint_ns": "invoice_workflow"
+    #         }}
+    #     )
+
+    #     return self._extract_final_state(result, None)
+
+
     async def resume(self, process_id: str, value: dict):
         self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
 
-        prev_state = await self.workflow_graph.aget_state(
-            config={"configurable": {
-                "thread_id": process_id,
-                "checkpoint_ns": "invoice_workflow"
-            }}
+        # 1️⃣ Load previous state
+        prev = await self.memory.aget_state(
+            {"configurable": {"thread_id": process_id, "checkpoint_ns": "invoice_workflow"}}
         )
-
-        if prev_state is None:
+        
+        if not prev:
             raise ValueError(f"No state found for {process_id}")
 
-        merged_state = {
+        prev_state = prev["state"]  # dict
+
+        # 2️⃣ Merge state
+        merged = {
             **prev_state,
             "resume": {"value": value},
             "human_review_required": False,
-            "current_agent": "human_review_node",
+            "current_agent": "human_review",
+            "overall_status": "in_progress",
+            "updated_at": datetime.utcnow().isoformat()
         }
 
+        # 3️⃣ Continue graph
         result = await self.workflow_graph.ainvoke(
-            merged_state,
+            merged,
             config={"configurable": {
                 "thread_id": process_id,
-                "checkpoint_ns": "invoice_workflow"
+                "checkpoint_ns": "invoice_workflow",
+                "db": self.db
             }}
         )
 
         return self._extract_final_state(result, None)
-
 
 
     # ----------------------------------------------------------------------
@@ -577,21 +617,10 @@ class InvoiceProcessingGraph:
         graph.set_entry_point("document")
         graph.set_finish_point("end")
 
+ 
        
-        # Compile with checkpointer
-        compiled_graph = graph.compile(checkpointer=self.memory)
  
-        # ✅ Bind a default namespace once so every run has checkpoint_ns
-        # compiled_graph = compiled_graph.with_config(
-        #     {"configurable": {"checkpoint_ns": "invoice_processing"}}
-        # )
- 
-        # import uuid
- 
-        # unique_ns = f"invoice_ns_{uuid.uuid4().hex[:8]}"
-        # compiled_graph = compiled_graph.with_config(
-        #     {"configurable": {"checkpoint_ns": unique_ns}}
-        # )
+      
  
  
         self.logger.log_metric(
@@ -879,11 +908,6 @@ class InvoiceProcessingGraph:
  
         self.logger.log_workflow_start(workflow_type, process_id, file=file_name)
  
-        # ✅ Pass thread_id; checkpoint_ns already bound on the runnable
-        # result = await self.workflow_graph.ainvoke(
-        #     state,
-        #     config={"configurable": {"thread_id": process_id}}
-        # )
  
         result = await self.workflow_graph.ainvoke(
             state.dict(),
@@ -926,7 +950,7 @@ class InvoiceProcessingGraph:
         """Retrieve workflow state snapshot."""
         # ✅ Query using the same keys the checkpointer expects
         checkpoint = await self.memory.aget_checkpoint(
-            {"configurable": {"thread_id": process_id, "checkpoint_ns": "invoice_processing"}}
+            {"configurable": {"thread_id": process_id, "checkpoint_ns": "invoice_workflow"}}
         )
         return checkpoint if checkpoint else None
  

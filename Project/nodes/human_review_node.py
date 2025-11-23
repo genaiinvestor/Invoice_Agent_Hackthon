@@ -221,9 +221,11 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
 
     # else:
     #     review_input = None
-    resume_obj = getattr(state, "resume", None)
+    # resume_obj = getattr(state, "resume", None)
 
-    if isinstance(resume_obj, dict) and resume_obj.get("value"):
+    # if isinstance(resume_obj, dict) and resume_obj.get("value"):
+    resume_obj = state.resume
+    if resume_obj and resume_obj.get("value"):
         review_input = resume_obj["value"]
         logger.info(f"Resumed human review for {process_id}: {json.dumps(review_input)}")
     else:
