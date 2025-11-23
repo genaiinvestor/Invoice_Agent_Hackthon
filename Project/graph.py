@@ -465,7 +465,8 @@ class InvoiceProcessingGraph:
         # Define entry and finish points
         graph.set_entry_point("document")
         graph.set_finish_point("end")
- 
+
+        graph.set_input_keys(["resume"])
         # Compile with checkpointer
         compiled_graph = graph.compile(checkpointer=self.memory)
  
