@@ -313,35 +313,35 @@ class InvoiceProcessingGraph:
 
     async def _document_agent_node(self, state: InvoiceProcessingState):
         new_state = await agent_registry.get("document_agent").run(state)
-        return new_state.dict()
+        return new_state
 
     async def _validation_agent_node(self, state: InvoiceProcessingState):
         new_state = await agent_registry.get("validation_agent").run(state)
-        return new_state.dict()
+        return new_state
 
     async def _risk_agent_node(self, state: InvoiceProcessingState):
         new_state = await agent_registry.get("risk_agent").run(state)
-        return new_state.dict()
+        return new_state
 
     async def _payment_agent_node(self, state: InvoiceProcessingState):
         new_state = await agent_registry.get("payment_agent").run(state)
-        return new_state.dict()
+        return new_state
 
     async def _audit_agent_node(self, state: InvoiceProcessingState):
         new_state = await agent_registry.get("audit_agent").run(state)
-        return new_state.dict()
+        return new_state
 
     async def _escalation_agent_node(self, state: InvoiceProcessingState):
         new_state = await agent_registry.get("escalation_agent").run(state)
-        return new_state.dict()
+        return new_state
 
     # async def _human_review_node(self, state: InvoiceProcessingState):
     #     new_state = await human_review_node(state)
-    #     return new_state.dict()
+    #     return new_state
 
     async def _human_review_node(self, state: InvoiceProcessingState, *, config=None):
         new_state = await human_review_node(state,config={"db": self.db})
-        return new_state.dict()
+        return new_state
 
     async def _end_node(self, state: InvoiceProcessingState):
         return state.dict()
