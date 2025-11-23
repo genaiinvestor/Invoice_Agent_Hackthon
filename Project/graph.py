@@ -483,52 +483,39 @@ class InvoiceProcessingGraph:
     async def resume(self, process_id: str, value: dict):
         self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
 
-        # 1️⃣ Load previous complete state
-        prev_state = await self.workflow_graph.aget_state(process_id)
+        # 1️⃣ Proper state load
+        prev_state = await self.workflow_graph.aget_state(
+            config={"configurable": {
+                "thread_id": process_id,
+                "checkpoint_ns": f"invoice_ns_{process_id}"
+            }}
+        )
 
         if not prev_state:
-            raise ValueError(f"No state found for process {process_id}. Cannot resume workflow.")
+            raise ValueError(f"No state found for process {process_id}")
 
-        decision = value.get("decision", "").lower()
-
-        # 2️⃣ Build reviewer decision update
-        reviewer_update = {
-            "payment_decision": {
-                "payment_status": "APPROVED" if decision == "approved" else "REJECTED",
-                "approved_amount": 0,
-                "transaction_id": None,
-                "payment_method": "manual_review",
-                "rejection_reason": None if decision == "approved" else "Rejected by reviewer",
-                "reviewed_by": value.get("reviewer"),
-                "review_comments": value.get("comments"),
-                "timestamp": datetime.utcnow().isoformat()
-            }
-        }
-
-        # 3️⃣ Merge previous state + resume input + reviewer update
+        # 2️⃣ Merge resume input
         merged_state = {
-            **prev_state,                    # keep all fields (file_name, invoice_url, extracted_data, etc.)
-            "__resume__": { "value": value },
+            **prev_state,
+            "__resume__": {"value": value},
             "current_agent": "human_review",
             "human_review_required": False,
             "overall_status": "in_progress",
-            **reviewer_update,
             "updated_at": datetime.utcnow().isoformat()
         }
 
-        # 4️⃣ Resume workflow with merged state
+        # 3️⃣ Continue workflow
         result = await self.workflow_graph.ainvoke(
             merged_state,
-            config={
-                "configurable": {
-                    "thread_id": process_id,
-                    "checkpoint_ns": f"invoice_ns_{process_id}",
-                    "db": self.db
-                }
-            }
+            config={"configurable": {
+                "thread_id": process_id,
+                "checkpoint_ns": f"invoice_ns_{process_id}",
+                "db": self.db
+            }}
         )
 
         return self._extract_final_state(result, None)
+
 
 
     # ----------------------------------------------------------------------
