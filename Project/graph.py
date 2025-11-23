@@ -666,11 +666,54 @@ class InvoiceProcessingGraph:
     #     )
 
     #     return self._extract_final_state(result, None)
+    # async def resume(self, process_id: str, value: dict):
+    #     self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+
+    #     # 1️⃣ Load previous state (InMemorySaver uses get_state(), not aget_state)
+    #     prev = self.memory.get_state(
+    #         {
+    #             "configurable": {
+    #                 "thread_id": process_id,
+    #                 "checkpoint_ns": "invoice_workflow"
+    #             }
+    #         }
+    #     )
+
+    #     if not prev:
+    #         raise ValueError(f"No state found for {process_id}")
+
+    #     prev_state = prev["state"]
+
+    #     # 2️⃣ Merge the resume input
+    #     merged = {
+    #         **prev_state,
+    #         "resume": {"value": value},
+    #         "human_review_required": False,
+    #         "current_agent": "human_review",
+    #         "overall_status": "in_progress",
+    #         "updated_at": datetime.utcnow().isoformat()
+    #     }
+
+    #     # 3️⃣ Continue graph
+    #     result = await self.workflow_graph.ainvoke(
+    #         merged,
+    #         config={
+    #             "configurable": {
+    #                 "thread_id": process_id,
+    #                 "checkpoint_ns": "invoice_workflow",
+    #                 "db": self.db
+    #             }
+    #         }
+    #     )
+
+    #     return self._extract_final_state(result, None)
+
+
     async def resume(self, process_id: str, value: dict):
         self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
 
-        # 1️⃣ Load previous state (InMemorySaver uses get_state(), not aget_state)
-        prev = self.memory.get_state(
+        # Load previous state using correct API
+        prev = await self.memory.aget(
             {
                 "configurable": {
                     "thread_id": process_id,
@@ -679,13 +722,13 @@ class InvoiceProcessingGraph:
             }
         )
 
-        if not prev:
-            raise ValueError(f"No state found for {process_id}")
+        if not prev or "state" not in prev:
+            raise ValueError(f"No saved state found for process_id={process_id}")
 
-        prev_state = prev["state"]
+        prev_state = prev["state"]  # Existing state dict
 
-        # 2️⃣ Merge the resume input
-        merged = {
+        # Merge updated values
+        merged_state = {
             **prev_state,
             "resume": {"value": value},
             "human_review_required": False,
@@ -694,9 +737,9 @@ class InvoiceProcessingGraph:
             "updated_at": datetime.utcnow().isoformat()
         }
 
-        # 3️⃣ Continue graph
+        # Continue workflow
         result = await self.workflow_graph.ainvoke(
-            merged,
+            merged_state,
             config={
                 "configurable": {
                     "thread_id": process_id,
@@ -707,7 +750,6 @@ class InvoiceProcessingGraph:
         )
 
         return self._extract_final_state(result, None)
-
 
     # ----------------------------------------------------------------------
     # Graph Creation
@@ -1073,7 +1115,15 @@ class InvoiceProcessingGraph:
         # checkpoint = await self.memory.aget_checkpoint(
         #     {"configurable": {"thread_id": process_id, "checkpoint_ns": "invoice_workflow"}}
         # )
-        checkpoint = await self.memory.aget_state(
+        # checkpoint = await self.memory.aget_state(
+        #     {
+        #         "configurable": {
+        #             "thread_id": process_id,
+        #             "checkpoint_ns": "invoice_workflow"
+        #         }
+        #     }
+        # )
+        checkpoint = await self.memory.aget(
             {
                 "configurable": {
                     "thread_id": process_id,
