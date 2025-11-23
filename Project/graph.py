@@ -395,22 +395,66 @@ class InvoiceProcessingGraph:
     #     )
 
     #     return self._extract_final_state(result, None)
+    # async def resume(self, process_id: str, value: dict):
+    #     self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+
+    #     decision = value.get("decision", "").lower()
+
+    #     wrapped_input = {
+    #         "resume": {"value": value},
+
+    #         # REQUIRED
+    #         "process_id": process_id,
+    #         "current_agent": "human_review_node",   # FIXED
+    #         "human_review_required": False,
+    #         "updated_at": datetime.utcnow().isoformat(),
+
+    #         # DO NOT CHANGE FILE NAME, DO NOT Mark completed!!!
+    #         # ADD PAYMENT DECISION ONLY
+    #         "payment_decision": {
+    #             "payment_status": "APPROVED" if decision == "approved" else "REJECTED",
+    #             "approved_amount": 0,
+    #             "transaction_id": None,
+    #             "payment_method": "manual_review",
+    #             "rejection_reason": None if decision == "approved" else "Rejected by reviewer",
+    #             "reviewed_by": value.get("reviewer"),
+    #             "review_comments": value.get("comments"),
+    #             "timestamp": datetime.utcnow().isoformat()
+    #         }
+    #     }
+
+    #     result = await self.workflow_graph.ainvoke(
+    #         wrapped_input,
+    #         config={
+    #             "configurable": {
+    #                 "thread_id": process_id,
+    #                 "checkpoint_ns": f"invoice_ns_{process_id}",
+    #                 "db": self.db
+    #             }
+    #         }
+    #     )
+
+    #     return self._extract_final_state(result, None)
+
     async def resume(self, process_id: str, value: dict):
         self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
 
         decision = value.get("decision", "").lower()
 
         wrapped_input = {
-            "resume": {"value": value},
+            "__resume__": {  # ⭐ IMPORTANT ⭐
+                "value": value
+            },
 
-            # REQUIRED
+            # REQUIRED STATE FIELDS
             "process_id": process_id,
-            "current_agent": "human_review_node",   # FIXED
+            "file_name": None,               # ⭐ DO NOT send fake filename
+            "current_agent": "human_review",
             "human_review_required": False,
+            "overall_status": "in_progress",
             "updated_at": datetime.utcnow().isoformat(),
 
-            # DO NOT CHANGE FILE NAME, DO NOT Mark completed!!!
-            # ADD PAYMENT DECISION ONLY
+            # ⭐ Payment decision from reviewer
             "payment_decision": {
                 "payment_status": "APPROVED" if decision == "approved" else "REJECTED",
                 "approved_amount": 0,
