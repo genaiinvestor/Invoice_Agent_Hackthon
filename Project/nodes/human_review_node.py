@@ -301,7 +301,6 @@
 
 #     return state
 #     # return state.dict()
-
 import json
 from datetime import datetime, timezone
 
@@ -309,6 +308,7 @@ from state import InvoiceProcessingState, ProcessingStatus, PaymentStatus
 from utils.logger import StructuredLogger
 
 UTC = timezone.utc
+
 async def human_review_node(state: InvoiceProcessingState, config=None) -> InvoiceProcessingState:
     logger = StructuredLogger("HumanReviewNode")
     state.current_agent = "human_review_node"
@@ -332,9 +332,6 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
     else:
         review_input = None
 
-    # ------------------------------------------------------------------
-    # PAUSE if no decision yet — this is the ONLY place we pause
-    # ------------------------------------------------------------------
     if not review_input:
         db = config.get("db") if config else None
 
@@ -347,21 +344,16 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
             "status": "PENDING_REVIEW",
             "created_at": datetime.now(UTC).isoformat(),
         }
+
         db.collection("pending_reviews").document(process_id).set(pending_doc)
         logger.info(f"Saved pending review for process_id={process_id}")
 
         state.overall_status = ProcessingStatus.PAUSED
         state.human_review_required = True
 
-        # ⭐ THE ONLY PLACE WHERE WE PAUSE
-        return {
-            "__pause__": True,
-            "state": state.dict()
-        }
+        return state   # ✔ FIXED: no dict, no __pause__
 
-    # ------------------------------------------------------------------
-    # If review decision received — FINALIZE (DO NOT PAUSE!)
-    # ------------------------------------------------------------------
+    # ---------------- Final decision ----------------
     decision = review_input.get("decision", "approved").lower()
     reviewer = review_input.get("reviewer", approver)
     comments = review_input.get("comments", "")
@@ -389,5 +381,5 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
     state.overall_status = ProcessingStatus.COMPLETED
     state.human_review_required = False
 
-    # ⭐ FINISHED — MUST RETURN NORMAL STATE
     return state
+
