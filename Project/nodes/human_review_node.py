@@ -270,10 +270,7 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
     #     state.overall_status = ProcessingStatus.PAUSED
     #     state.human_review_required = True
     #     return state
-    from langgraph.prebuilt import Interrupt
-
     if not review_input:
-
         logger.warning("Pausing for manual human review (Firestore).")
 
         db = config.get("db") if config else None
@@ -287,16 +284,17 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
             "status": "PENDING_REVIEW",
             "created_at": datetime.now(UTC).isoformat(),
         }
-
         db.collection("pending_reviews").document(process_id).set(pending_doc)
+
         logger.info(f"Saved pending review request for process_id={process_id}")
 
-        # Mark state paused
+        # Mark state paused — this is how LangGraph expects PAUSE in v0.2.50
         state.overall_status = ProcessingStatus.PAUSED
         state.human_review_required = True
 
-        # ⭐ Correct way for LangGraph 0.2.50
-        raise Interrupt(value=state.dict())
+        # RETURN state (NO INTERRUPT)
+        return state
+
 
     # ---------------------------------------------------------
     # 4️⃣ Process APPROVE / REJECT decision
