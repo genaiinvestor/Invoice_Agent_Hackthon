@@ -480,37 +480,67 @@ class InvoiceProcessingGraph:
 
     #     return self._extract_final_state(result, None)
 
+    # async def resume(self, process_id: str, value: dict):
+    #     self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+
+    #     # 1️⃣ Proper state load
+    #     prev_state = await self.workflow_graph.aget_state(
+    #         config={"configurable": {
+    #             "thread_id": process_id,
+    #             "checkpoint_ns": f"invoice_ns_{process_id}"
+    #         }}
+    #     )
+
+    #     if not prev_state:
+    #         raise ValueError(f"No state found for process {process_id}")
+
+    #     # 2️⃣ Merge resume input
+    #     merged_state = {
+    #         **prev_state,
+    #         "__resume__": {"value": value},
+    #         "current_agent": "human_review",
+    #         "human_review_required": False,
+    #         "overall_status": "in_progress",
+    #         "updated_at": datetime.utcnow().isoformat()
+    #     }
+
+    #     # 3️⃣ Continue workflow
+    #     result = await self.workflow_graph.ainvoke(
+    #         merged_state,
+    #         config={"configurable": {
+    #             "thread_id": process_id,
+    #             "checkpoint_ns": f"invoice_ns_{process_id}",
+    #             "db": self.db
+    #         }}
+    #     )
+
+    #     return self._extract_final_state(result, None)
+
     async def resume(self, process_id: str, value: dict):
         self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
 
-        # 1️⃣ Proper state load
         prev_state = await self.workflow_graph.aget_state(
             config={"configurable": {
                 "thread_id": process_id,
-                "checkpoint_ns": f"invoice_ns_{process_id}"
+                "checkpoint_ns": "invoice_workflow"
             }}
         )
 
-        if not prev_state:
-            raise ValueError(f"No state found for process {process_id}")
+        if prev_state is None:
+            raise ValueError(f"No state found for {process_id}")
 
-        # 2️⃣ Merge resume input
         merged_state = {
             **prev_state,
-            "__resume__": {"value": value},
-            "current_agent": "human_review",
+            "resume": {"value": value},
             "human_review_required": False,
-            "overall_status": "in_progress",
-            "updated_at": datetime.utcnow().isoformat()
+            "current_agent": "human_review_node",
         }
 
-        # 3️⃣ Continue workflow
         result = await self.workflow_graph.ainvoke(
             merged_state,
             config={"configurable": {
                 "thread_id": process_id,
-                "checkpoint_ns": f"invoice_ns_{process_id}",
-                "db": self.db
+                "checkpoint_ns": "invoice_workflow"
             }}
         )
 
@@ -556,12 +586,12 @@ class InvoiceProcessingGraph:
         #     {"configurable": {"checkpoint_ns": "invoice_processing"}}
         # )
  
-        import uuid
+        # import uuid
  
-        unique_ns = f"invoice_ns_{uuid.uuid4().hex[:8]}"
-        compiled_graph = compiled_graph.with_config(
-            {"configurable": {"checkpoint_ns": unique_ns}}
-        )
+        # unique_ns = f"invoice_ns_{uuid.uuid4().hex[:8]}"
+        # compiled_graph = compiled_graph.with_config(
+        #     {"configurable": {"checkpoint_ns": unique_ns}}
+        # )
  
  
         self.logger.log_metric(
@@ -569,8 +599,16 @@ class InvoiceProcessingGraph:
             value=1.0,
             description="Invoice processing workflow graph initialized successfully."
         )
- 
+        compiled_graph = graph.compile(checkpointer=self.memory)
+
+        # Use a fixed namespace for all processes
+        compiled_graph = compiled_graph.with_config(
+            {"configurable": {"checkpoint_ns": "invoice_workflow"}}
+        )
+
         return compiled_graph
+ 
+     
  
     # ----------------------------------------------------------------------
     # Agent execution nodes
@@ -852,7 +890,7 @@ class InvoiceProcessingGraph:
             config={
                 "configurable": {
                     "thread_id": process_id,
-                    "checkpoint_ns": f"invoice_ns_{process_id}",
+                    "checkpoint_ns": "invoice_workflow"
                     "db": self.db 
                 }
             }
