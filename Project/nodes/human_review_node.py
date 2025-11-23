@@ -270,7 +270,7 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
     #     state.overall_status = ProcessingStatus.PAUSED
     #     state.human_review_required = True
     #     return state
-    from langgraph.errors import Interrupt
+    from langgraph.prebuilt import Interrupt
 
     if not review_input:
 
@@ -295,8 +295,9 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
         state.overall_status = ProcessingStatus.PAUSED
         state.human_review_required = True
 
-        # ⭐ CRITICAL FIX: Save checkpoint + pause
-        raise Interrupt(state=state.dict())
+        # ⭐ Correct way for LangGraph 0.2.50
+        raise Interrupt(value=state.dict())
+
     # ---------------------------------------------------------
     # 4️⃣ Process APPROVE / REJECT decision
     # ---------------------------------------------------------
