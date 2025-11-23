@@ -890,7 +890,7 @@ class InvoiceProcessingGraph:
             config={
                 "configurable": {
                     "thread_id": process_id,
-                    "checkpoint_ns": "invoice_workflow"
+                    "checkpoint_ns": "invoice_workflow",
                     "db": self.db 
                 }
             }
