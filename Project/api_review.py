@@ -2,7 +2,12 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-def create_fastapi_app(workflow, db):
+# def create_fastapi_app(workflow, db):
+from singleton import get_shared_workflow
+
+def create_fastapi_app(db):
+    workflow = get_shared_workflow()
+
     app = FastAPI()
 
     class ReviewRequest(BaseModel):

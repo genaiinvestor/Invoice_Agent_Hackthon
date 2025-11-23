@@ -82,7 +82,6 @@
 
 
 
-
 """Main Streamlit UI for Invoice AgenticAI — LangGraph Version (Final UI Corrected)"""
 
 import os
@@ -112,15 +111,19 @@ from fastapi import FastAPI
 
 # Create ONE workflow instance
 # shared_workflow = get_workflow({})
-if "shared_workflow" not in st.session_state:
-    st.session_state.shared_workflow = get_workflow({})
-shared_workflow = st.session_state.shared_workflow
+# if "shared_workflow" not in st.session_state:
+#     st.session_state.shared_workflow = get_workflow({})
+# shared_workflow = st.session_state.shared_workflow
+from singleton import get_shared_workflow
+shared_workflow = get_shared_workflow()
+
 
 db = firestore.Client()
 
 from api_review import create_fastapi_app
 # api = create_fastapi_app(shared_workflow, db)
-api = create_fastapi_app(st.session_state.shared_workflow, db)
+# api = create_fastapi_app(st.session_state.shared_workflow, db)
+api = create_fastapi_app(db)
 
 
 class InvoiceProcessingApp:
