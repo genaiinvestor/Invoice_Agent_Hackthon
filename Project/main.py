@@ -114,16 +114,14 @@ from fastapi import FastAPI
 # if "shared_workflow" not in st.session_state:
 #     st.session_state.shared_workflow = get_workflow({})
 # shared_workflow = st.session_state.shared_workflow
-from singleton import get_shared_workflow
+from singleton import get_shared_workflow, get_shared_db
+
 shared_workflow = get_shared_workflow()
-
-
-db = firestore.Client()
+db = get_shared_db()
 
 from api_review import create_fastapi_app
-# api = create_fastapi_app(shared_workflow, db)
-# api = create_fastapi_app(st.session_state.shared_workflow, db)
-api = create_fastapi_app(db)
+api = create_fastapi_app()
+
 
 
 class InvoiceProcessingApp:
