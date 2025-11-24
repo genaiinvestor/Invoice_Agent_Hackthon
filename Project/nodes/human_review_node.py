@@ -440,7 +440,9 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
         #     "__pause__": True,
         #     "state": state.dict()
         # }
-        return state
+        # return state
+        # ⭐ Mandatory for LangGraph to save checkpoint
+        return {"__pause__": True}
 
     # ---------------------------------------------------------------------
     # ⭐ FINAL DECISION BRANCH

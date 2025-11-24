@@ -205,9 +205,14 @@ class InvoiceProcessingGraph:
 
         saved_state = checkpoint["state"]["values"]
 
-        saved_state["resume"] = {"value": value}
-        saved_state["human_review_required"] = False
-        merged_state = InvoiceProcessingState(**saved_state)
+        # saved_state["resume"] = {"value": value}
+        # saved_state["human_review_required"] = False
+        # merged_state = InvoiceProcessingState(**saved_state)
+        merged_state = {
+            "__resume__": {
+                "value": value
+            }
+        }
         result = await self.workflow_graph.ainvoke(
             merged_state,
             config={"configurable": {
