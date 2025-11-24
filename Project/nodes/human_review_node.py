@@ -432,9 +432,13 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
         db.collection("pending_reviews").document(process_id).set(pending_doc)
         logger.info(f"Saved pending review for process_id={process_id}")
 
-        state.overall_status = ProcessingStatus.PAUSED
-        state.human_review_required = True
-
+        # state.overall_status = ProcessingStatus.PAUSED
+        # state.human_review_required = True
+        return {
+                "overall_status": ProcessingStatus.PAUSED,
+                "human_review_required": True,
+                "resume": None,
+            }
         # ⭐ Required for LangGraph to save checkpoint
         # return {
         #     "__pause__": True,
@@ -442,7 +446,7 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
         # }
         # return state
         # ⭐ Mandatory for LangGraph to save checkpoint
-        return {"__pause__": True}
+        # return {"__pause__": True}
 
     # ---------------------------------------------------------------------
     # ⭐ FINAL DECISION BRANCH
