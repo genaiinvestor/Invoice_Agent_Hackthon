@@ -384,7 +384,7 @@
 #     return state
 import json
 from datetime import datetime, timezone
-
+from langgraph.prebuilt import PauseSignal
 from state import InvoiceProcessingState, ProcessingStatus, PaymentStatus
 from utils.logger import StructuredLogger
 
@@ -409,6 +409,7 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
     resume_obj = state.resume
     if resume_obj and resume_obj.get("value"):
         review_input = resume_obj["value"]
+        print("Review Input .................",review_input)
         logger.info(f"Resumed human review for {process_id}: {json.dumps(review_input)}")
     else:
         review_input = None
@@ -431,22 +432,25 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
 
         db.collection("pending_reviews").document(process_id).set(pending_doc)
         logger.info(f"Saved pending review for process_id={process_id}")
+        state.overall_status = ProcessingStatus.PAUSED
+        state.human_review_required = True
+        state.resume = None
+        # ⭐ CRITICAL: return PauseSignal()
+        return PauseSignal()
+     
 
         # state.overall_status = ProcessingStatus.PAUSED
         # state.human_review_required = True
-        return {
-                "overall_status": ProcessingStatus.PAUSED,
-                "human_review_required": True,
-                "resume": None,
-            }
-        # ⭐ Required for LangGraph to save checkpoint
         # return {
-        #     "__pause__": True,
-        #     "state": state.dict()
-        # }
-        # return state
-        # ⭐ Mandatory for LangGraph to save checkpoint
-        # return {"__pause__": True}
+        #         "overall_status": ProcessingStatus.PAUSED,
+        #         "human_review_required": True,
+        #         "resume": None,
+        #     }
+      
+
+        # ⭐ THIS IS THE REQUIRED AND ONLY VALID PAUSE SIGNAL ⭐
+        return {"__pause__": True}
+     
 
     # ---------------------------------------------------------------------
     # ⭐ FINAL DECISION BRANCH

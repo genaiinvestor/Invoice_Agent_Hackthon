@@ -203,18 +203,16 @@ class InvoiceProcessingGraph:
         if not checkpoint:
             raise ValueError(f"No saved state found for process_id={process_id}")
 
-        saved_state = checkpoint["state"]["values"]
+        # saved_state = checkpoint["state"]["values"]
+        # Load previous saved state
+        prev_state = checkpoint["state"]["values"]
 
-        # saved_state["resume"] = {"value": value}
-        # saved_state["human_review_required"] = False
-        # merged_state = InvoiceProcessingState(**saved_state)
-        merged_state = {
-            "__resume__": {
-                "value": value
-            }
-        }
+        # Inject resume value into state
+        prev_state["__resume__"] = {"value": value}
+
+       
         result = await self.workflow_graph.ainvoke(
-            merged_state,
+            prev_state,
             config={"configurable": {
                 "thread_id": process_id,
                 "checkpoint_ns": "invoice_workflow",
