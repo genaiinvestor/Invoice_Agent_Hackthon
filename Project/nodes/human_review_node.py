@@ -418,6 +418,8 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
     # ⭐ PAUSE BRANCH — MANDATORY FOR CHECKPOINT SAVING
     # ---------------------------------------------------------------------
     if not review_input:
+        logger.info(f"Pausing workflow for human review. process_id={process_id}")
+
         db = config.get("db") if config else None
 
         pending_doc = {
@@ -432,11 +434,18 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
 
         db.collection("pending_reviews").document(process_id).set(pending_doc)
         logger.info(f"Saved pending review for process_id={process_id}")
-        state.overall_status = ProcessingStatus.PAUSED
-        state.human_review_required = True
-        state.resume = None
-        # ⭐ CRITICAL: return PauseSignal()
-        return PauseSignal()
+        # state.overall_status = ProcessingStatus.PAUSED
+        # state.human_review_required = True
+        # state.resume = None
+        # # ⭐ CRITICAL: return PauseSignal()
+        # return PauseSignal()
+          # IMPORTANT: Return ONLY VALID STATE KEYS
+        return {
+            "overall_status": ProcessingStatus.PAUSED,
+            "human_review_required": True,
+            "resume": None,
+        }
+
      
 
         # state.overall_status = ProcessingStatus.PAUSED
