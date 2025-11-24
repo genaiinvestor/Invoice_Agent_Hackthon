@@ -154,6 +154,7 @@ def create_fastapi_app():
 
         result_state = await workflow.resume(
             process_id=req.process_id,
+            node="human_review_node", 
             value=review_input
         )
 
