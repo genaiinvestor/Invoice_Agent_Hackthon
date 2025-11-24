@@ -207,9 +207,9 @@ class InvoiceProcessingGraph:
 
         saved_state["resume"] = {"value": value}
         saved_state["human_review_required"] = False
-
+        merged_state = InvoiceProcessingState(**saved_state)
         result = await self.workflow_graph.ainvoke(
-            saved_state,
+            merged_state,
             config={"configurable": {
                 "thread_id": process_id,
                 "checkpoint_ns": "invoice_workflow",
@@ -542,7 +542,7 @@ class InvoiceProcessingGraph:
  
  
         result = await self.workflow_graph.ainvoke(
-            state.dict(),
+            state,
             config={
                 "configurable": {
                     "thread_id": process_id,
