@@ -169,8 +169,8 @@ class InvoiceProcessingGraph:
         saved_state["human_review_required"] = False
         # saved_state["overall_status"] = ProcessingStatus.IN_PROGRESS
         # saved_state["updated_at"] = datetime.utcnow()
-        saved_state["overall_status"] = "in_progress"
-        saved_state["updated_at"] = datetime.utcnow().isoformat()
+        # saved_state["overall_status"] = "in_progress"
+        # saved_state["updated_at"] = datetime.utcnow().isoformat()
 
 
         # 3️⃣ Continue the graph execution normally (NO start_at!!)

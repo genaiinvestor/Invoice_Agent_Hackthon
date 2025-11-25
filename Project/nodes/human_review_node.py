@@ -420,6 +420,9 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
     if not review_input:
         logger.info(f"Pausing workflow for human review. process_id={process_id}")
 
+        state.overall_status = ProcessingStatus.PAUSED
+        state.human_review_required = True
+        state.resume = {}
         db = config.get("db") if config else None
 
         pending_doc = {
@@ -434,49 +437,8 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
 
         db.collection("pending_reviews").document(process_id).set(pending_doc)
         logger.info(f"Saved pending review for process_id={process_id}")
-        # state.overall_status = ProcessingStatus.PAUSED
-        # state.human_review_required = True
-        # state.resume = None
-        # # ⭐ CRITICAL: return PauseSignal()
-        # return PauseSignal()
-          # IMPORTANT: Return ONLY VALID STATE KEYS
-        # return {
-        #     "overall_status": ProcessingStatus.PAUSED,
-        #     "human_review_required": True,
-        #     "resume": None,
-        # }
-        # return {
-        #     "process_id": state.process_id,
-        #     "file_name": state.file_name,
-        #     "overall_status": "paused",
-        #     "current_agent": "human_review_node",
-        #     "human_review_required": True,
-        #     "resume": {},           # must be dict, not None
-        #     "updated_at": datetime.utcnow().isoformat()
-        # }
-        # return {
-        #     "overall_status": "paused",
-        #     "resume": {"value": None},   # must exist because your resume() reads it
-        # }
-        return {
-            "overall_status": ProcessingStatus.PAUSED,
-            "resume": {},
-        }
+        return state   # ⭐ THIS IS IMPORTANT
 
-
-     
-
-        # state.overall_status = ProcessingStatus.PAUSED
-        # state.human_review_required = True
-        # return {
-        #         "overall_status": ProcessingStatus.PAUSED,
-        #         "human_review_required": True,
-        #         "resume": None,
-        #     }
-      
-
-        # ⭐ THIS IS THE REQUIRED AND ONLY VALID PAUSE SIGNAL ⭐
-      
      
 
     # ---------------------------------------------------------------------
