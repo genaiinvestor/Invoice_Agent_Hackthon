@@ -132,31 +132,57 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
     # ------------------------------------------------------------------
     # ⭐ PAUSE BRANCH — SAVE CHECKPOINT
     # ------------------------------------------------------------------
+    # if not review_input:
+    #     logger.info(f"[HRN] PAUSING workflow for human review for {process_id}")
+
+    #     # Save to Firestore (optional)
+    #     db = config.get("db") if config else None
+    #     if db:
+    #         pending_doc = {
+    #             "process_id": process_id,
+    #             "invoice_number": invoice_number,
+    #             "priority": priority,
+    #             "approver": approver,
+    #             "status": "PENDING_REVIEW",
+    #             "created_at": datetime.now(UTC).isoformat(),
+    #         }
+    #         db.collection("pending_reviews").document(process_id).set(pending_doc)
+    #         logger.info(f"[HRN] Firestore pending review saved for {process_id}")
+
+    #     # Modify the state (return FULL STATE)
+    #     state.overall_status = ProcessingStatus.PAUSED
+    #     state.human_review_required = True
+    #     state.resume = {}              # important
+    #     state.updated_at = datetime.utcnow()
+
+    #     logger.info(f"[HRN] Returning PAUSED state for checkpoint save: {state.dict()}")
+    #     return state
     if not review_input:
         logger.info(f"[HRN] PAUSING workflow for human review for {process_id}")
 
-        # Save to Firestore (optional)
         db = config.get("db") if config else None
         if db:
-            pending_doc = {
+            db.collection("pending_reviews").document(process_id).set({
                 "process_id": process_id,
                 "invoice_number": invoice_number,
                 "priority": priority,
                 "approver": approver,
                 "status": "PENDING_REVIEW",
                 "created_at": datetime.now(UTC).isoformat(),
-            }
-            db.collection("pending_reviews").document(process_id).set(pending_doc)
-            logger.info(f"[HRN] Firestore pending review saved for {process_id}")
+            })
+        
+        # FIX 1: prevent invalid None file_name
+        if not state.file_name or state.file_name is None:
+            state.file_name = f"{process_id}.pdf"
 
-        # Modify the state (return FULL STATE)
         state.overall_status = ProcessingStatus.PAUSED
         state.human_review_required = True
-        state.resume = {}              # important
+        state.resume = {}
         state.updated_at = datetime.utcnow()
 
-        logger.info(f"[HRN] Returning PAUSED state for checkpoint save: {state.dict()}")
+        logger.info(f"[HRN] Returning paused state (valid) -> checkpoint will be saved")
         return state
+
     
     # ------------------------------------------------------------------
     # ⭐ FINAL DECISION BRANCH

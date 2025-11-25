@@ -159,6 +159,8 @@ class InvoiceProcessingGraph:
                 "checkpoint_ns": "invoice_workflow"
             }}
         )
+        print("CHECKPOINT FOUND:", checkpoint)
+       
 
         self.logger.info(f"[RESUME] Raw checkpoint result: {checkpoint}")
 
