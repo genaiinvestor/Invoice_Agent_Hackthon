@@ -454,9 +454,13 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
         #     "resume": {},           # must be dict, not None
         #     "updated_at": datetime.utcnow().isoformat()
         # }
+        # return {
+        #     "overall_status": "paused",
+        #     "resume": {"value": None},   # must exist because your resume() reads it
+        # }
         return {
-            "overall_status": "paused",
-            "resume": {"value": None},   # must exist because your resume() reads it
+            "overall_status": ProcessingStatus.PAUSED,
+            "resume": {},
         }
 
 
