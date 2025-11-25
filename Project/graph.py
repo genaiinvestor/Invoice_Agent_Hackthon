@@ -146,12 +146,13 @@ class InvoiceProcessingGraph:
         agent_registry.register(AuditAgent())
         agent_registry.register(EscalationAgent())
  
-    
-
     async def resume(self, process_id: str, value: dict):
-        self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+        self.logger.info(f"[RESUME] Resume requested for {process_id}")
+        self.logger.info(f"[RESUME] Incoming value: {value}")
 
-        # 1️⃣ Load the saved checkpoint
+        # ------------------------------------------
+        # LOAD CHECKPOINT
+        # ------------------------------------------
         checkpoint = await self.compiled_graph.checkpointer.aget(
             {"configurable": {
                 "thread_id": process_id,
@@ -159,21 +160,31 @@ class InvoiceProcessingGraph:
             }}
         )
 
+        self.logger.info(f"[RESUME] Raw checkpoint result: {checkpoint}")
+
         if not checkpoint:
+            self.logger.error(f"[RESUME] ❌ Checkpoint NOT FOUND for {process_id}")
             raise ValueError(f"No saved state found for process_id={process_id}")
 
+        # Extract internal saved state
         saved_state = checkpoint["state"]["values"]
+        self.logger.info(f"[RESUME] Loaded saved_state keys: {list(saved_state.keys())}")
+        self.logger.info(f"[RESUME] Loaded saved_state: {saved_state}")
 
-        # 2️⃣ Inject new values for resume
+        # ------------------------------------------
+        # INJECT DECISION INTO STATE
+        # ------------------------------------------
         saved_state["resume"] = {"value": value}
         saved_state["human_review_required"] = False
-        # saved_state["overall_status"] = ProcessingStatus.IN_PROGRESS
-        # saved_state["updated_at"] = datetime.utcnow()
-        # saved_state["overall_status"] = "in_progress"
-        # saved_state["updated_at"] = datetime.utcnow().isoformat()
+        saved_state["updated_at"] = datetime.utcnow()
 
+        self.logger.info(f"[RESUME] Modified saved_state before invoke: {saved_state}")
 
-        # 3️⃣ Continue the graph execution normally (NO start_at!!)
+        # ------------------------------------------
+        # CONTINUE GRAPH EXECUTION
+        # ------------------------------------------
+        self.logger.info(f"[RESUME] Calling workflow_graph.ainvoke() for {process_id}")
+
         result = await self.workflow_graph.ainvoke(
             saved_state,
             config={"configurable": {
@@ -183,7 +194,51 @@ class InvoiceProcessingGraph:
             }}
         )
 
-        return self._extract_final_state(result, None)
+        self.logger.info(f"[RESUME] Workflow returned result: {result}")
+
+        final_state = self._extract_final_state(result, None)
+        self.logger.info(f"[RESUME] Final state extracted: {final_state}")
+
+        return final_state
+
+        
+
+    # async def resume(self, process_id: str, value: dict):
+    #     self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+
+    #     # 1️⃣ Load the saved checkpoint
+    #     checkpoint = await self.compiled_graph.checkpointer.aget(
+    #         {"configurable": {
+    #             "thread_id": process_id,
+    #             "checkpoint_ns": "invoice_workflow"
+    #         }}
+    #     )
+
+    #     if not checkpoint:
+    #         raise ValueError(f"No saved state found for process_id={process_id}")
+
+    #     saved_state = checkpoint["state"]["values"]
+
+    #     # 2️⃣ Inject new values for resume
+    #     saved_state["resume"] = {"value": value}
+    #     saved_state["human_review_required"] = False
+    #     # saved_state["overall_status"] = ProcessingStatus.IN_PROGRESS
+    #     # saved_state["updated_at"] = datetime.utcnow()
+    #     # saved_state["overall_status"] = "in_progress"
+    #     # saved_state["updated_at"] = datetime.utcnow().isoformat()
+
+
+    #     # 3️⃣ Continue the graph execution normally (NO start_at!!)
+    #     result = await self.workflow_graph.ainvoke(
+    #         saved_state,
+    #         config={"configurable": {
+    #             "thread_id": process_id,
+    #             "checkpoint_ns": "invoice_workflow",
+    #             "db": self.db
+    #         }}
+    #     )
+
+    #     return self._extract_final_state(result, None)
 
 
     # ----------------------------------------------------------------------
