@@ -146,108 +146,7 @@ class InvoiceProcessingGraph:
         agent_registry.register(AuditAgent())
         agent_registry.register(EscalationAgent())
  
-
-    # async def resume(self, process_id: str, value: dict):
-    #     self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
-
-    #     prev = await self.compiled_graph.checkpointer.aget(
-    #         {
-    #             "configurable": {
-    #                 "thread_id": process_id,
-    #                 "checkpoint_ns": "invoice_workflow",
-    #             }
-    #         }
-    #     )
-
-
-    #     if not prev or "state" not in prev:
-    #         raise ValueError(f"No saved state found for process_id={process_id}")
-
-    #     prev_state = prev["state"]["values"]  
-
-    #     # Merge updated values
-    #     merged_state = {
-    #         **prev_state,
-    #         "resume": {"value": value},
-    #         "human_review_required": False,
-    #         "current_agent": "human_review_node",
-    #         "overall_status": "in_progress",
-    #         "updated_at": datetime.utcnow().isoformat()
-    #     }
-
-    #     # Continue workflow
-    #     result = await self.workflow_graph.ainvoke(
-    #         merged_state,
-    #         config={
-    #             "configurable": {
-    #                 "thread_id": process_id,
-    #                 "checkpoint_ns": "invoice_workflow",
-    #                 "db": self.db
-    #             }
-    #         }
-    #     )
-
-    #     return self._extract_final_state(result, None)
-
-    # async def resume(self, process_id: str, value: dict):
-    #     self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
-
-    #     # Load checkpoint
-    #     checkpoint = await self.compiled_graph.checkpointer.aget(
-    #         {"configurable": {
-    #             "thread_id": process_id,
-    #             "checkpoint_ns": "invoice_workflow"
-    #         }}
-    #     )
-
-    #     if not checkpoint:
-    #         raise ValueError(f"No saved state found for process_id={process_id}")
-
-    #     saved_state = checkpoint["state"]["values"]
-
-    #     # Inject resume input properly
-    #     saved_state["resume"] = {"value": value}
-    #     saved_state["human_review_required"] = False
-
-       
-    #     result = await self.workflow_graph.ainvoke(
-    #         saved_state,
-    #         config={"configurable": {
-    #             "thread_id": process_id,
-    #             "checkpoint_ns": "invoice_workflow",
-    #             "db": self.db
-    #         }}
-    #     )
-
-    #     return self._extract_final_state(result, None)
-    # async def resume(self, process_id: str, node: str, value: dict):
-    #     """
-    #     Resume the workflow from a specific node using start_at.
-    #     This avoids checkpoint dependency (LangGraph 0.2.50).
-    #     """
-    #     self.logger.info(f"[RESUME] Resuming {process_id} at node '{node}' with value={value}")
-
-    #     try:
-    #         # ⭐ Directly resume execution from the specified node
-    #         result = await self.workflow_graph.ainvoke(
-    #             input=value,
-    #             config={
-    #                 "configurable": {
-    #                     "thread_id": process_id,
-    #                     "checkpoint_ns": f"invoice_ns_{process_id}",
-    #                     "db": self.db
-    #                 }
-    #             },
-    #             start_at=node,   # ⭐ This is the important part
-    #         )
-
-    #         final_state = self._extract_final_state(result, None)
-    #         self.logger.info(f"[RESUME_COMPLETE] Successfully resumed {process_id}")
-    #         return final_state
-
-    #     except Exception as e:
-    #         self.logger.error(f"[RESUME_FAILED] Resume error for {process_id}: {e}")
-    #         raise
+    
 
     async def resume(self, process_id: str, value: dict):
         self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
@@ -268,8 +167,11 @@ class InvoiceProcessingGraph:
         # 2️⃣ Inject new values for resume
         saved_state["resume"] = {"value": value}
         saved_state["human_review_required"] = False
-        saved_state["overall_status"] = ProcessingStatus.IN_PROGRESS
-        saved_state["updated_at"] = datetime.utcnow()
+        # saved_state["overall_status"] = ProcessingStatus.IN_PROGRESS
+        # saved_state["updated_at"] = datetime.utcnow()
+        saved_state["overall_status"] = "in_progress"
+        saved_state["updated_at"] = datetime.utcnow().isoformat()
+
 
         # 3️⃣ Continue the graph execution normally (NO start_at!!)
         result = await self.workflow_graph.ainvoke(

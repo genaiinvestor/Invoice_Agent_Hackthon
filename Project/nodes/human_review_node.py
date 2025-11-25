@@ -445,13 +445,20 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
         #     "human_review_required": True,
         #     "resume": None,
         # }
+        # return {
+        #     "process_id": state.process_id,
+        #     "file_name": state.file_name,
+        #     "overall_status": "paused",
+        #     "current_agent": "human_review_node",
+        #     "human_review_required": True,
+        #     "resume": {},           # must be dict, not None
+        #     "updated_at": datetime.utcnow().isoformat()
+        # }
         return {
-            "overall_status": ProcessingStatus.PAUSED,
-            "human_review_required": True,
-            "resume": None,
-            "current_agent": "human_review_node",
-            "updated_at": datetime.now(UTC),
+            "overall_status": "paused",
+            "resume": {"value": None},   # must exist because your resume() reads it
         }
+
 
      
 
