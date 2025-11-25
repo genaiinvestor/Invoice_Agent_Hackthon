@@ -152,11 +152,16 @@ def create_fastapi_app():
         # Remove pending review BEFORE resuming
         db.collection("pending_reviews").document(req.process_id).delete()
 
+        # result_state = await workflow.resume(
+        #     process_id=req.process_id,
+        #     node="human_review_node", 
+        #     value=review_input
+        # )
         result_state = await workflow.resume(
             process_id=req.process_id,
-            node="human_review_node", 
             value=review_input
         )
+
 
         payment_status = (
             result_state.payment_decision.get("payment_status", "UNKNOWN")

@@ -220,34 +220,68 @@ class InvoiceProcessingGraph:
     #     )
 
     #     return self._extract_final_state(result, None)
-    async def resume(self, process_id: str, node: str, value: dict):
-        """
-        Resume the workflow from a specific node using start_at.
-        This avoids checkpoint dependency (LangGraph 0.2.50).
-        """
-        self.logger.info(f"[RESUME] Resuming {process_id} at node '{node}' with value={value}")
+    # async def resume(self, process_id: str, node: str, value: dict):
+    #     """
+    #     Resume the workflow from a specific node using start_at.
+    #     This avoids checkpoint dependency (LangGraph 0.2.50).
+    #     """
+    #     self.logger.info(f"[RESUME] Resuming {process_id} at node '{node}' with value={value}")
 
-        try:
-            # ⭐ Directly resume execution from the specified node
-            result = await self.workflow_graph.ainvoke(
-                input=value,
-                config={
-                    "configurable": {
-                        "thread_id": process_id,
-                        "checkpoint_ns": f"invoice_ns_{process_id}",
-                        "db": self.db
-                    }
-                },
-                start_at=node,   # ⭐ This is the important part
-            )
+    #     try:
+    #         # ⭐ Directly resume execution from the specified node
+    #         result = await self.workflow_graph.ainvoke(
+    #             input=value,
+    #             config={
+    #                 "configurable": {
+    #                     "thread_id": process_id,
+    #                     "checkpoint_ns": f"invoice_ns_{process_id}",
+    #                     "db": self.db
+    #                 }
+    #             },
+    #             start_at=node,   # ⭐ This is the important part
+    #         )
 
-            final_state = self._extract_final_state(result, None)
-            self.logger.info(f"[RESUME_COMPLETE] Successfully resumed {process_id}")
-            return final_state
+    #         final_state = self._extract_final_state(result, None)
+    #         self.logger.info(f"[RESUME_COMPLETE] Successfully resumed {process_id}")
+    #         return final_state
 
-        except Exception as e:
-            self.logger.error(f"[RESUME_FAILED] Resume error for {process_id}: {e}")
-            raise
+    #     except Exception as e:
+    #         self.logger.error(f"[RESUME_FAILED] Resume error for {process_id}: {e}")
+    #         raise
+
+    async def resume(self, process_id: str, value: dict):
+        self.logger.info(f"[RESUME] Resuming {process_id} with value={value}")
+
+        # 1️⃣ Load the saved checkpoint
+        checkpoint = await self.compiled_graph.checkpointer.aget(
+            {"configurable": {
+                "thread_id": process_id,
+                "checkpoint_ns": "invoice_workflow"
+            }}
+        )
+
+        if not checkpoint:
+            raise ValueError(f"No saved state found for process_id={process_id}")
+
+        saved_state = checkpoint["state"]["values"]
+
+        # 2️⃣ Inject new values for resume
+        saved_state["resume"] = {"value": value}
+        saved_state["human_review_required"] = False
+        saved_state["overall_status"] = ProcessingStatus.IN_PROGRESS
+        saved_state["updated_at"] = datetime.utcnow()
+
+        # 3️⃣ Continue the graph execution normally (NO start_at!!)
+        result = await self.workflow_graph.ainvoke(
+            saved_state,
+            config={"configurable": {
+                "thread_id": process_id,
+                "checkpoint_ns": "invoice_workflow",
+                "db": self.db
+            }}
+        )
+
+        return self._extract_final_state(result, None)
 
 
     # ----------------------------------------------------------------------
