@@ -1131,7 +1131,17 @@ if __name__ == "__main__":
     def start_fastapi():
         uvicorn.run(api, host="0.0.0.0", port=8081, log_level="info")
 
-    threading.Thread(target=start_fastapi, daemon=True).start()
+    # threading.Thread(target=start_fastapi, daemon=True).start()
+if __name__ == "__main__":
+    def start_fastapi():
+        uvicorn.run(api, host="0.0.0.0", port=8081, log_level="info")
+
+    # Start FastAPI only once per machine — not every Streamlit rerun
+    if os.getenv("RUN_MAIN") != "true":   # prevents reload
+        if "fastapi_started" not in st.session_state:
+            threading.Thread(target=start_fastapi, daemon=True).start()
+            st.session_state.fastapi_started = True
+
     app = InvoiceProcessingApp()
     app.run()
 
