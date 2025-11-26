@@ -183,8 +183,13 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
 
         logger.info(f"[HRN] Returning paused state (valid) -> checkpoint will be saved")
         # return state
+        # return {
+        #     "__pause__": True,
+       
+        # }
         return {
-            "__pause__": True
+            "__pause__": True,
+            "state": state.model_dump()
         }
 
     
