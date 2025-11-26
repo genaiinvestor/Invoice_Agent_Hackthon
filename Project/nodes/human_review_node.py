@@ -175,7 +175,8 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
         if not state.file_name or state.file_name is None:
             state.file_name = f"{process_id}.pdf"
 
-        state.overall_status = ProcessingStatus.PAUSED
+        # state.overall_status = ProcessingStatus.PAUSED
+        state.overall_status = "PAUSED"
         state.human_review_required = True
         state.resume = {}
         state.updated_at = datetime.utcnow()

@@ -101,7 +101,8 @@ import asyncio
 from typing import Dict, Any, List, Optional, Literal
 # from datetime import datetime
 from langgraph.graph import StateGraph
-from langgraph.checkpoint.memory import MemorySaver
+from firestore_checkpointer import FirestoreCheckpointer
+# from langgraph.checkpoint.memory import MemorySaver
 from datetime import datetime, timezone
 UTC = timezone.utc
 from google.cloud import firestore
@@ -127,10 +128,13 @@ class InvoiceProcessingGraph:
     def __init__(self, config: Dict[str, Any] = None,db=None):
         self.config = config or {}
         self.logger = StructuredLogger("InvoiceWorkflow")
-        self.memory = MemorySaver()
+        # self.memory = MemorySaver()
         self._initialize_agents()
+        # self.workflow_graph = self._create_workflow_graph()
+        # self.graph = self.workflow_graph
+        # self.compiled_graph = self.workflow_graph
+        self.checkpointer = FirestoreCheckpointer()
         self.workflow_graph = self._create_workflow_graph()
-        self.graph = self.workflow_graph
         self.compiled_graph = self.workflow_graph
         self.db = db
  
@@ -153,7 +157,13 @@ class InvoiceProcessingGraph:
         # ------------------------------------------
         # LOAD CHECKPOINT
         # ------------------------------------------
-        checkpoint = await self.compiled_graph.checkpointer.aget(
+        # checkpoint = await self.compiled_graph.checkpointer.aget(
+        #     {"configurable": {
+        #         "thread_id": process_id,
+        #         "checkpoint_ns": "invoice_workflow"
+        #     }}
+        # )
+        checkpoint = await self.checkpointer.aget(
             {"configurable": {
                 "thread_id": process_id,
                 "checkpoint_ns": "invoice_workflow"
@@ -169,7 +179,8 @@ class InvoiceProcessingGraph:
             raise ValueError(f"No saved state found for process_id={process_id}")
 
         # Extract internal saved state
-        saved_state = checkpoint["state"]["values"]
+        # saved_state = checkpoint["state"]["values"]
+        saved_state = checkpoint["v"]
         self.logger.info(f"[RESUME] Loaded saved_state keys: {list(saved_state.keys())}")
         self.logger.info(f"[RESUME] Loaded saved_state: {saved_state}")
 
@@ -178,6 +189,7 @@ class InvoiceProcessingGraph:
         # ------------------------------------------
         saved_state["resume"] = {"value": value}
         saved_state["human_review_required"] = False
+        saved_state["overall_status"] = "in_progress"
         saved_state["updated_at"] = datetime.utcnow()
 
         self.logger.info(f"[RESUME] Modified saved_state before invoke: {saved_state}")
@@ -283,7 +295,8 @@ class InvoiceProcessingGraph:
             value=1.0,
             description="Invoice processing workflow graph initialized successfully."
         )
-        compiled_graph = graph.compile(checkpointer=self.memory)
+        # compiled_graph = graph.compile(checkpointer=self.memory)
+        compiled_graph = graph.compile(checkpointer=self.checkpointer)
 
         # Use a fixed namespace for all processes
         compiled_graph = compiled_graph.with_config(
@@ -615,7 +628,15 @@ class InvoiceProcessingGraph:
         #         }
         #     }
         # )
-        checkpoint = await self.memory.aget(
+        # checkpoint = await self.memory.aget(
+        #     {
+        #         "configurable": {
+        #             "thread_id": process_id,
+        #             "checkpoint_ns": "invoice_workflow"
+        #         }
+        #     }
+        # )
+        checkpoint = await self.checkpointer.aget(
             {
                 "configurable": {
                     "thread_id": process_id,
@@ -623,6 +644,7 @@ class InvoiceProcessingGraph:
                 }
             }
         )
+
 
         return checkpoint if checkpoint else None
  

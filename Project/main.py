@@ -425,7 +425,8 @@ class InvoiceProcessingApp:
                                     if getattr(r, "process_id", None) == process_id:
                                         # r.payment_decision.get("payment_status") = PaymentStatus[updated["payment_status"]]
                                         r.payment_decision["payment_status"] = updated["payment_status"]
-                                        r.overall_status = ProcessingStatus[updated["overall_status"]]
+                                        # r.overall_status = ProcessingStatus[updated["overall_status"]]
+                                        r.overall_status = updated["overall_status"]
                                         r.human_review_required = False
                                         st.session_state.results[idx] = r
                                         break
@@ -461,7 +462,8 @@ class InvoiceProcessingApp:
                                     if getattr(r, "process_id", None) == process_id:
                                         # r.payment_decision.get("payment_status") = PaymentStatus[updated["payment_status"]] 
                                         r.payment_decision["payment_status"] = updated["payment_status"]
-                                        r.overall_status = ProcessingStatus[updated["overall_status"]]
+                                        # r.overall_status = ProcessingStatus[updated["overall_status"]]
+                                        r.overall_status = updated["overall_status"]
                                         r.human_review_required = False
                                         st.session_state.results[idx] = r
                                         break
