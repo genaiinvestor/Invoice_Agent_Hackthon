@@ -826,6 +826,119 @@ class InvoiceProcessingApp:
     #     # ==========================================================
     #     st.info("📄 No escalations found in this session or Firestore.")
 
+#     def render_invoice_details_tab(self):
+#         import pandas as pd
+#         from datetime import datetime
+
+#         st.markdown("#### 🧾 Invoice Details Table")
+#         results = st.session_state.results
+#         if not results:
+#             st.info("No processed invoices yet. Run processing first.")
+#             return
+
+#         table_data = []
+#         for r in results:
+#             inv = r.invoice_data
+#             risk = r.risk_assessment
+#             pay = r.payment_decision
+#             duration = round(
+#                 (datetime.utcnow() - getattr(r, "created_at", datetime.utcnow())).total_seconds() / 60, 2
+#             )
+
+#             payment_status = getattr(pay, "payment_status", "N/A")
+#             if hasattr(payment_status, "name"):
+#                 payment_status = payment_status.name
+
+#             table_data.append({
+#                 "File": os.path.basename(r.file_name),
+#                 "Invoice #": getattr(inv, "invoice_number", "N/A"),
+#                 "Customer": getattr(inv, "customer_name", "N/A"),
+#                 "Amount": getattr(inv, "total", 0.0),
+#                 "Risk Level": str(getattr(risk, "risk_level", "N/A")),
+#                 "Payment Status": payment_status,
+#                 "Status": str(getattr(r.overall_status, "value", r.overall_status)),
+#                 "Processing Time (min)": duration,
+#             })
+
+#         df = pd.DataFrame(table_data)
+#         st.dataframe(df, width="stretch")
+
+#     # --- 📊 Summary metrics section ---
+#         # total_escalated = sum(1 for r in results if str(r.overall_status).lower() == "escalated")
+#         # total_completed = sum(1 for r in results if str(r.overall_status).lower() == "completed")
+
+#         # col1, col2 = st.columns(2)
+#         # with col1:
+#         #     st.metric("🚨 Total Escalated Invoices", total_escalated)
+#         # with col2:
+#         #     st.metric("✅ Total Completed Invoices", total_completed)
+
+#         # st.markdown("---")
+
+# # --- 📊 Metrics based on actual workflow state ---
+
+#         # Count invoices that have escalation records
+#         total_escalated = sum(1 for r in results if getattr(r, "escalation_record", None))
+
+#         # Count invoices that are marked as completed
+#         def is_completed(r):
+#             status = getattr(r, "overall_status", None)
+#             if hasattr(status, "value"):
+#                 return str(status.value).lower() == "completed"
+#             return str(status).lower().endswith("completed")
+
+#         total_completed = sum(1 for r in results if is_completed(r))
+
+#         # --- Display summary metrics ---
+#         col1, col2 = st.columns(2)
+#         with col1:
+#             st.metric("🚨 Total Escalated Invoices", total_escalated)
+#         with col2:
+#             st.metric("✅ Total Completed Invoices", total_completed)
+
+#         st.markdown("---")
+
+
+#         # --- 🔍 Detailed Invoice View ---
+#         st.subheader("🔍 Detailed Invoice View")
+
+#         invoice_options = [
+#             f"{os.path.basename(r.file_name)} - {getattr(r.invoice_data, 'customer_name', 'Unknown')}"
+#             for r in results
+#         ]
+
+#         selected_invoice = st.selectbox("Select invoice for detailed view:", invoice_options)
+
+#         selected_result = None
+#         for r in results:
+#             if selected_invoice.startswith(os.path.basename(r.file_name)):
+#                 selected_result = r
+#                 break
+
+#         if not selected_result:
+#             st.info("Select an invoice to see its details.")
+#             return
+
+#         inv = selected_result.invoice_data
+#         risk = selected_result.risk_assessment
+#         pay = selected_result.payment_decision
+
+#         col1, col2 = st.columns(2)
+#         with col1:
+#             st.markdown("### 🧾 Invoice Information")
+#             st.write(f"**Invoice Number:** {getattr(inv, 'invoice_number', 'N/A')}")
+#             st.write(f"**Customer:** {getattr(inv, 'customer_name', 'N/A')}")
+#             st.write(f"**Amount:** ${getattr(inv, 'total', 0.0):,.2f}")
+
+#         with col2:
+#             st.markdown("### 🎯 Processing Results")
+#             st.write(f"**Overall Status:** {getattr(selected_result.overall_status, 'value', selected_result.overall_status)}")
+#             st.write(f"**Risk Level:** {getattr(risk, 'risk_level', 'N/A')}")
+#             st.write(f"**Payment Status:** {getattr(pay, 'payment_status', 'N/A')}")
+
+#         st.markdown("---")
+
+
     def render_invoice_details_tab(self):
         import pandas as pd
         from datetime import datetime
@@ -840,14 +953,17 @@ class InvoiceProcessingApp:
         for r in results:
             inv = r.invoice_data
             risk = r.risk_assessment
-            pay = r.payment_decision
+            pay = r.payment_decision  # dict now
             duration = round(
                 (datetime.utcnow() - getattr(r, "created_at", datetime.utcnow())).total_seconds() / 60, 2
             )
 
-            payment_status = getattr(pay, "payment_status", "N/A")
-            if hasattr(payment_status, "name"):
-                payment_status = payment_status.name
+            # -----------------------------
+            # FIX PAYMENT STATUS (DICT)
+            # -----------------------------
+            payment_status = "N/A"
+            if isinstance(pay, dict):                 # FIXED
+                payment_status = pay.get("payment_status", "N/A")  # FIXED
 
             table_data.append({
                 "File": os.path.basename(r.file_name),
@@ -855,7 +971,7 @@ class InvoiceProcessingApp:
                 "Customer": getattr(inv, "customer_name", "N/A"),
                 "Amount": getattr(inv, "total", 0.0),
                 "Risk Level": str(getattr(risk, "risk_level", "N/A")),
-                "Payment Status": payment_status,
+                "Payment Status": payment_status,      # FIXED
                 "Status": str(getattr(r.overall_status, "value", r.overall_status)),
                 "Processing Time (min)": duration,
             })
@@ -863,24 +979,9 @@ class InvoiceProcessingApp:
         df = pd.DataFrame(table_data)
         st.dataframe(df, width="stretch")
 
-    # --- 📊 Summary metrics section ---
-        # total_escalated = sum(1 for r in results if str(r.overall_status).lower() == "escalated")
-        # total_completed = sum(1 for r in results if str(r.overall_status).lower() == "completed")
-
-        # col1, col2 = st.columns(2)
-        # with col1:
-        #     st.metric("🚨 Total Escalated Invoices", total_escalated)
-        # with col2:
-        #     st.metric("✅ Total Completed Invoices", total_completed)
-
-        # st.markdown("---")
-
-# --- 📊 Metrics based on actual workflow state ---
-
-        # Count invoices that have escalation records
+        # --- Summary metrics ---
         total_escalated = sum(1 for r in results if getattr(r, "escalation_record", None))
 
-        # Count invoices that are marked as completed
         def is_completed(r):
             status = getattr(r, "overall_status", None)
             if hasattr(status, "value"):
@@ -889,7 +990,6 @@ class InvoiceProcessingApp:
 
         total_completed = sum(1 for r in results if is_completed(r))
 
-        # --- Display summary metrics ---
         col1, col2 = st.columns(2)
         with col1:
             st.metric("🚨 Total Escalated Invoices", total_escalated)
@@ -898,8 +998,7 @@ class InvoiceProcessingApp:
 
         st.markdown("---")
 
-
-        # --- 🔍 Detailed Invoice View ---
+        # --- Detailed Invoice View ---
         st.subheader("🔍 Detailed Invoice View")
 
         invoice_options = [
@@ -921,7 +1020,7 @@ class InvoiceProcessingApp:
 
         inv = selected_result.invoice_data
         risk = selected_result.risk_assessment
-        pay = selected_result.payment_decision
+        pay = selected_result.payment_decision  # dict
 
         col1, col2 = st.columns(2)
         with col1:
@@ -934,7 +1033,14 @@ class InvoiceProcessingApp:
             st.markdown("### 🎯 Processing Results")
             st.write(f"**Overall Status:** {getattr(selected_result.overall_status, 'value', selected_result.overall_status)}")
             st.write(f"**Risk Level:** {getattr(risk, 'risk_level', 'N/A')}")
-            st.write(f"**Payment Status:** {getattr(pay, 'payment_status', 'N/A')}")
+
+            # ----------------------------------------------
+            # FIX PAYMENT STATUS (DICT)
+            # ----------------------------------------------
+            if isinstance(pay, dict):                                 # FIXED
+                st.write(f"**Payment Status:** {pay.get('payment_status', 'N/A')}")  # FIXED
+            else:
+                st.write(f"**Payment Status:** {getattr(pay, 'payment_status', 'N/A')}")
 
         st.markdown("---")
 
