@@ -271,7 +271,8 @@ class AuditAgent(BaseAgent):
             violations.append("Missing invoice number.")
         if not state.audit_trail:
             violations.append("Missing audit trail entries.")
-        if state.payment_decision and not state.payment_decision.transaction_id:
+        # if state.payment_decision and not state.payment_decision.transaction_id:
+        if state.payment_decision and not state.payment_decision.get("transaction_id"):
             violations.append("Missing transaction ID in payment record.")
         return {"standard": "SOX", "violations": violations}
  
@@ -290,7 +291,7 @@ class AuditAgent(BaseAgent):
         violations = []
         if not state.validation_result or not state.validation_result.po_found:
             violations.append("PO matching missing or failed.")
-        if state.payment_decision and state.payment_decision.payment_status == PaymentStatus.REJECTED:
+        if state.payment_decision and state.payment_decision.get("payment_status") == PaymentStatus.REJECTED:
             violations.append("Rejected payment requires manual documentation.")
         return {"standard": "Financial Controls", "violations": violations}
  
@@ -366,7 +367,7 @@ class AuditAgent(BaseAgent):
                                         audit_record: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Identify audit items that must be reported to compliance officers."""
         events = []
-        if state.payment_decision and state.payment_decision.payment_status == PaymentStatus.REJECTED:
+        if state.payment_decision and state.payment_decision.get("payment_status") == PaymentStatus.REJECTED:
             events.append({"event": "Payment Rejected", "severity": "high"})
         if state.risk_assessment and state.risk_assessment.risk_level in (RiskLevel.HIGH, RiskLevel.CRITICAL):
             events.append({"event": "High Risk Invoice", "severity": "critical"})

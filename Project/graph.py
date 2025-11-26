@@ -396,8 +396,13 @@ class InvoiceProcessingGraph:
         """Route after audit based on compliance severity and risk level."""
         if not hasattr(state, "audit_report"):
             return "end"
- 
+
+        if not state.audit_report:
+            self.logger.warning("Audit report missing – skipping audit routing.")
+            return "end"
+
         compliance = state.audit_report.get("compliance", {})
+        # compliance = state.audit_report.get("compliance", {})
         overall = compliance.get("overall_status", "compliant")
         risk_level = getattr(state.risk_assessment, "risk_level", "low")
         risk_str = str(risk_level).lower()
