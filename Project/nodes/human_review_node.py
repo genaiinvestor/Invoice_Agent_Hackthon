@@ -176,21 +176,34 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
             state.file_name = f"{process_id}.pdf"
 
         # state.overall_status = ProcessingStatus.PAUSED
-        state.overall_status = "PAUSED"
+        # state.overall_status = "PAUSED"
+        state.overall_status = ProcessingStatus.PAUSED
         state.human_review_required = True
         state.resume = {}
         state.updated_at = datetime.utcnow()
 
         logger.info(f"[HRN] Returning paused state (valid) -> checkpoint will be saved")
-        # return state
+        return state
         # return {
         #     "__pause__": True,
        
         # }
-        return {
-            "__pause__": True,
-            "state": state.model_dump()
-        }
+        # return {
+        #     "__pause__": True,
+        #     "state": state.model_dump()
+        # }
+
+#         return {
+#             "__pause__": True,
+#             "process_id": state.process_id,
+#             "file_name": state.file_name,
+#             "resume": {},
+#             "overall_status": ProcessingStatus.PAUSED,
+#             "current_agent": "human_review_node",
+#             "human_review_required": True,
+#             "updated_at": datetime.utcnow(),
+# }
+
 
     
     # ------------------------------------------------------------------
