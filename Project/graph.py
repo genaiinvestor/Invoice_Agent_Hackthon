@@ -90,7 +90,8 @@ class InvoiceProcessingGraph:
         # Extract internal saved state
         # saved_state = checkpoint["state"]["values"]
         # saved_state = checkpoint["v"]
-        saved_state = checkpoint["state"]["values"]
+        # saved_state = checkpoint["state"]["values"]
+        saved_state = checkpoint["channel_values"]
         self.logger.info(f"[RESUME] Loaded saved_state keys: {list(saved_state.keys())}")
         self.logger.info(f"[RESUME] Loaded saved_state: {saved_state}")
 
