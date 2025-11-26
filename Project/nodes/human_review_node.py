@@ -182,7 +182,11 @@ async def human_review_node(state: InvoiceProcessingState, config=None) -> Invoi
         state.updated_at = datetime.utcnow()
 
         logger.info(f"[HRN] Returning paused state (valid) -> checkpoint will be saved")
-        return state
+        # return state
+        return {
+            "__pause__": True,
+            "state": state.dict()
+        }
 
     
     # ------------------------------------------------------------------

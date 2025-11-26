@@ -6,8 +6,8 @@ import asyncio
 from typing import Dict, Any, List, Optional, Literal
 # from datetime import datetime
 from langgraph.graph import StateGraph
-from firestore_checkpointer import FirestoreCheckpointer
-# from langgraph.checkpoint.memory import MemorySaver
+# from firestore_checkpointer import FirestoreCheckpointer
+from langgraph.checkpoint.memory import MemorySaver
 from datetime import datetime, timezone
 UTC = timezone.utc
 from google.cloud import firestore
@@ -38,7 +38,8 @@ class InvoiceProcessingGraph:
         # self.workflow_graph = self._create_workflow_graph()
         # self.graph = self.workflow_graph
         # self.compiled_graph = self.workflow_graph
-        self.checkpointer = FirestoreCheckpointer()
+        # self.checkpointer = FirestoreCheckpointer()
+        self.checkpointer = MemorySaver()
         self.workflow_graph = self._create_workflow_graph()
         self.compiled_graph = self.workflow_graph
         self.db = db
@@ -68,11 +69,14 @@ class InvoiceProcessingGraph:
         #         "checkpoint_ns": "invoice_workflow"
         #     }}
         # )
-        checkpoint = await self.checkpointer.aget(
-            {"configurable": {
-                "thread_id": process_id,
-                "checkpoint_ns": "invoice_workflow"
-            }}
+        # checkpoint = await self.checkpointer.aget(
+        #     {"configurable": {
+        #         "thread_id": process_id,
+        #         "checkpoint_ns": "invoice_workflow"
+        #     }}
+        # )
+        checkpoint = await self.compiled_graph.checkpointer.aget(
+            {"configurable": {"thread_id": process_id}}
         )
         print("CHECKPOINT FOUND:", checkpoint)
        
@@ -85,7 +89,8 @@ class InvoiceProcessingGraph:
 
         # Extract internal saved state
         # saved_state = checkpoint["state"]["values"]
-        saved_state = checkpoint["v"]
+        # saved_state = checkpoint["v"]
+        saved_state = checkpoint["state"]["values"]
         self.logger.info(f"[RESUME] Loaded saved_state keys: {list(saved_state.keys())}")
         self.logger.info(f"[RESUME] Loaded saved_state: {saved_state}")
 
@@ -104,7 +109,7 @@ class InvoiceProcessingGraph:
         # ------------------------------------------
         self.logger.info(f"[RESUME] Calling workflow_graph.ainvoke() for {process_id}")
 
-        result = await self.workflow_graph.ainvoke(
+        result = await self.compiled_graph.ainvoke(
             saved_state,
             config={"configurable": {
                 "thread_id": process_id,
