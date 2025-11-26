@@ -397,6 +397,53 @@ class InvoiceProcessingApp:
                     st.write(f"**Approver:** {approver}")
                     st.write(f"**Created At:** {created_at}")
                     st.write(f"**Status:** {status}")
+    # ======================================================
+                    # ⭐ NEW: SHOW ISSUES + DETAILS LIKE LOCAL MODE
+                    # ======================================================
+                    issues = []
+                    details = []
+
+                    for r in results:
+                        if getattr(r, "process_id", None) == process_id:
+
+                            # --- Validation Issues ---
+                            val = getattr(r, "validation_result", None)
+                            if val and val.discrepancies:
+                                issues.append("Validation issues:")
+                                for d in val.discrepancies:
+                                    issues.append(f"- {d}")
+
+                            # --- Risk Issues ---
+                            risk = getattr(r, "risk_assessment", None)
+                            if risk and hasattr(risk, "risk_level"):
+                                issues.append(f"Risk Level: {risk.risk_level}")
+
+                            # --- Escalation Record Summary ---
+                            esc = getattr(r, "escalation_record", None)
+                            if esc:
+                                reason = esc.get("reason")
+                                summary = esc.get("summary")
+
+                                if reason:
+                                    issues.append(f"Escalation Reason: {reason}")
+                                if summary:
+                                    details.append(summary)
+
+                            break  # Match found
+
+                    # Display issues
+                    if issues:
+                        st.write("### 🔍 Issues Found")
+                        for issue in issues:
+                            st.markdown(f"- {issue}")
+
+                    # Display details
+                    if details:
+                        st.write("### 📄 Details")
+                        for d in details:
+                            st.markdown(f"- {d}")
+
+                    st.markdown("---")
 
                     col1, col2 = st.columns(2)
 
